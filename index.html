@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>計算ヒーロー ロボ - １年生のまとめ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700;800;900&family=M+PLUS+Rounded+1c:wght@800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            rounded: ['"M PLUS Rounded 1c"', 'sans-serif'],
+            fredoka: ['"Fredoka"', 'cursive'],
+          },
+          animation: {
+            'shake': 'shake 0.4s ease-in-out',
+            'pop-in': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          },
+          keyframes: {
+            shake: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '20%, 60%': { transform: 'translateX(-8px)' },
+              '40%, 80%': { transform: 'translateX(8px)' },
+            },
+            popIn: {
+              '0%': { transform: 'scale(0.3)', opacity: '0' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: radial-gradient(#fbcfe8 20%, transparent 20%), radial-gradient(#ffe4e6 20%, transparent 20%);
+      background-size: 26px 26px;
+      background-position: 0 0, 13px 13px;
+      background-color: #fff0f5;
+      touch-action: manipulation;
+    }
+
+    .keypad-btn, button {
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+
+    .keypad-btn {
+      background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
+      border: 3px solid #fda4af;
+      border-radius: 1rem;
+      box-shadow: 0 4px 0 #f472b6, 0 5px 8px rgba(244, 114, 182, 0.25);
+      transition: all 0.1s ease;
+    }
+    .keypad-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 0 #f472b6, 0 6px 10px rgba(244, 114, 182, 0.3);
+    }
+    .keypad-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #f472b6, 0 2px 4px rgba(244, 114, 182, 0.2);
+      border-color: #f43f5e;
+      background: #ffe4e6;
+    }
+
+    /* 時計回りに回転する虹色（赤橙黄緑青藍紫）アニメーション */
+    @keyframes spinClockwise {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spinClockwise 8s linear infinite;
+    }
+
+    .cherry-node {
+      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #ffe4e6 50%, #fb7185 100%);
+      border: 3.5px solid #e11d48;
+      box-shadow: 0 4px 6px rgba(225, 29, 72, 0.3), inset 0 -3px 4px rgba(159, 18, 57, 0.2);
+      transition: all 0.2s ease;
+    }
+
+    .cherry-node-success {
+      border: 4px solid #10b981 !important;
+      box-shadow: 0 4px 6px rgba(16, 185, 129, 0.4), inset 0 -3px 4px rgba(159, 18, 57, 0.2) !important;
+      color: #1e293b !important;
+    }
+
+    /* 静止したアクティブな入力ターゲット枠（目立つ黄色） */
+    .target-active {
+      border-color: #f59e0b !important;
+      background-color: #fef3c7 !important;
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4), 0 4px 8px rgba(245, 158, 11, 0.2) !important;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #fbcfe8;
+      border-radius: 10px;
+    }
+
+    * {
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
+  </style>
+</head>
+
+<body class="font-rounded min-h-screen flex items-center justify-center p-2 sm:p-4 select-none overflow-hidden">
+
+  <!-- 16:9 アスペクト比 メインフレーム -->
+  <div class="w-full max-w-5xl aspect-[16/9] max-h-[96vh] bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border-4 sm:border-8 border-pink-200 flex overflow-hidden relative">
+
+    <!-- ========================================== -->
+    <!-- 【トップ画面】計算ヒーロー スタート画面（白背景＆時計回り虹色外枠） -->
+    <!-- ========================================== -->
+    <div id="title-screen" class="absolute inset-0 bg-white z-50 flex items-center justify-center p-2 sm:p-4 transition-opacity duration-300">
+      
+      <!-- 時計回りに動く 虹色（赤・橙・黄・緑・青・藍・紫）の外枠コンテナ -->
+      <div class="relative w-[94%] h-[95%] max-w-2xl p-2 sm:p-3 rounded-[2.5rem] overflow-hidden shadow-2xl flex items-center justify-center">
+        
+        <!-- 360度時計回りに回転する 7色虹色グラデーション背景 -->
+        <div class="absolute inset-[-100%] animate-spin-slow bg-[conic-gradient(from_0deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#6366f1,#a855f7,#ef4444)]"></div>
+
+        <!-- 内側 カプセル背景（純白） -->
+        <div class="relative w-full h-full bg-white rounded-[2.2rem] flex flex-col items-center justify-between p-3 sm:p-5 overflow-hidden">
+          
+          <!-- 背景アクセントパーツ -->
+          <div class="absolute top-3 left-6 text-yellow-400 text-3xl animate-bounce"><i class="fa-solid fa-star"></i></div>
+          <div class="absolute bottom-5 right-6 text-pink-500 text-4xl animate-pulse"><i class="fa-solid fa-sparkles"></i></div>
+          <div class="absolute top-1/3 right-8 text-cyan-400 text-2xl animate-bounce"><i class="fa-solid fa-bolt"></i></div>
+          <div class="absolute bottom-1/3 left-8 text-lime-500 text-3xl animate-pulse"><i class="fa-solid fa-crown"></i></div>
+
+          <!-- タイトル＆サブタイトル（指定カラー: タイトル赤、ふりがなピンク） -->
+          <div class="flex flex-col items-center text-center mt-1 z-10">
+            <h1 class="text-3xl sm:text-5xl font-black text-red-600 drop-shadow-md tracking-wider flex items-center justify-center gap-2 font-fredoka">
+              <ruby>計算<rt class="text-xs sm:text-base font-extrabold text-pink-500 font-rounded">けいさん</rt></ruby>
+              <ruby>ヒーロー<rt class="text-xs sm:text-base font-extrabold text-pink-500 font-rounded">HERO</rt></ruby>
+              <ruby>ロボ<rt class="text-xs sm:text-base font-extrabold text-pink-500 font-rounded">robot</rt></ruby>
+            </h1>
+            
+            <!-- １年生のまとめ バッジ -->
+            <div class="mt-2 p-0.5 rounded-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-400 via-cyan-400 to-purple-500 shadow-md">
+              <p class="text-sm sm:text-xl font-black text-slate-800 bg-white px-6 sm:px-8 py-0.5 sm:py-1 rounded-full whitespace-nowrap tracking-wide shadow-inner">
+                １年生のまとめ
+              </p>
+            </div>
+          </div>
+
+          <!-- 中央：カッコいい多色カラーの合体ヒーローロボット (アニメーション変色なし) -->
+          <div class="my-auto flex items-center justify-center z-10">
+            <svg class="w-60 h-48 sm:w-84 sm:h-60 drop-shadow-2xl overflow-visible" viewBox="0 0 200 170">
+              <defs>
+                <radialGradient id="robot-back-aura" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#fef08a" stop-opacity="0.8"/>
+                  <stop offset="60%" stop-color="#38bdf8" stop-opacity="0.4"/>
+                  <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
+                </radialGradient>
+                <linearGradient id="red-armor-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#ff3344"/>
+                  <stop offset="100%" stop-color="#c81428"/>
+                </linearGradient>
+                <linearGradient id="blue-armor-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#2563eb"/>
+                  <stop offset="50%" stop-color="#1d4ed8"/>
+                  <stop offset="100%" stop-color="#1e3a8a"/>
+                </linearGradient>
+                <linearGradient id="gold-border-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fde047"/>
+                  <stop offset="50%" stop-color="#eab308"/>
+                  <stop offset="100%" stop-color="#ca8a04"/>
+                </linearGradient>
+                <radialGradient id="green-orb-grad" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stop-color="#4ade80"/>
+                  <stop offset="40%" stop-color="#10b981"/>
+                  <stop offset="100%" stop-color="#047857"/>
+                </radialGradient>
+                <linearGradient id="white-silver-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="100%" stop-color="#e2e8f0"/>
+                </linearGradient>
+              </defs>
+
+              <!-- バックオーラ -->
+              <circle cx="100" cy="85" r="75" fill="url(#robot-back-aura)"/>
+
+              <!-- 背部：大きな赤＆白の4枚羽（ウイング） -->
+              <path d="M 85 55 L 20 8 L 12 18 L 78 72 Z" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="1.5"/>
+              <path d="M 20 8 L 12 18 L 38 28 Z" fill="url(#white-silver-grad)" stroke="#cbd5e1" stroke-width="1"/>
+              <path d="M 115 55 L 180 8 L 188 18 L 122 72 Z" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="1.5"/>
+              <path d="M 180 8 L 188 18 L 162 28 Z" fill="url(#white-silver-grad)" stroke="#cbd5e1" stroke-width="1"/>
+              <path d="M 80 70 L 10 45 L 6 58 L 72 82 Z" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="1.5"/>
+              <path d="M 10 45 L 6 58 L 28 58 Z" fill="url(#white-silver-grad)" stroke="#cbd5e1" stroke-width="1"/>
+              <path d="M 120 70 L 190 45 L 194 58 L 128 82 Z" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="1.5"/>
+              <path d="M 190 45 L 194 58 L 172 58 Z" fill="url(#white-silver-grad)" stroke="#cbd5e1" stroke-width="1"/>
+
+              <!-- 脚部 -->
+              <path d="M 72 100 L 52 145 L 34 140 L 60 98 Z" fill="url(#blue-armor-grad)" stroke="#1e3a8a" stroke-width="2"/>
+              <path d="M 52 145 L 30 158 L 65 162 L 62 143 Z" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+              <polygon points="68,98 56,118 74,118" fill="url(#gold-border-grad)" stroke="#854d0e" stroke-width="1"/>
+              <polygon points="46,142 54,142 50,154" fill="url(#green-orb-grad)" stroke="#ffffff" stroke-width="1"/>
+
+              <path d="M 128 100 L 148 145 L 166 140 L 140 98 Z" fill="url(#blue-armor-grad)" stroke="#1e3a8a" stroke-width="2"/>
+              <path d="M 148 145 L 170 158 L 135 162 L 138 143 Z" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+              <polygon points="132,98 144,118 126,118" fill="url(#gold-border-grad)" stroke="#854d0e" stroke-width="1"/>
+              <polygon points="154,142 146,142 150,154" fill="url(#green-orb-grad)" stroke="#ffffff" stroke-width="1"/>
+
+              <!-- 腰部 -->
+              <path d="M 66 90 L 134 90 L 124 110 L 76 110 Z" fill="url(#white-silver-grad)" stroke="#94a3b8" stroke-width="2"/>
+              <polygon points="100,92 110,108 90,108" fill="url(#gold-border-grad)"/>
+              <circle cx="100" cy="102" r="4" fill="url(#green-orb-grad)"/>
+
+              <!-- 腕部 -->
+              <path d="M 58 60 L 32 66 L 24 82 L 48 84 Z" fill="url(#white-silver-grad)" stroke="#94a3b8" stroke-width="1.5"/>
+              <rect x="20" y="80" width="16" height="18" rx="4" fill="url(#blue-armor-grad)" stroke="#1d4ed8" stroke-width="1.5"/>
+              <circle cx="28" cy="102" r="6" fill="#1e293b"/>
+              <path d="M 142 60 L 168 66 L 176 82 L 152 84 Z" fill="url(#white-silver-grad)" stroke="#94a3b8" stroke-width="1.5"/>
+              <rect x="164" y="80" width="16" height="18" rx="4" fill="url(#blue-armor-grad)" stroke="#1d4ed8" stroke-width="1.5"/>
+              <circle cx="172" cy="102" r="6" fill="#1e293b"/>
+
+              <!-- 肩バインダー -->
+              <path d="M 68 52 C 45 35 22 50 32 78 C 42 90 66 82 68 52 Z" fill="url(#blue-armor-grad)" stroke="#1d4ed8" stroke-width="2"/>
+              <path d="M 36 50 Q 42 62 40 74" fill="none" stroke="url(#gold-border-grad)" stroke-width="3" stroke-linecap="round"/>
+              <ellipse cx="32" cy="64" rx="4" ry="7" fill="url(#green-orb-grad)"/>
+              <path d="M 132 52 C 155 35 178 50 168 78 C 158 90 134 82 132 52 Z" fill="url(#blue-armor-grad)" stroke="#1d4ed8" stroke-width="2"/>
+              <path d="M 164 50 Q 158 62 160 74" fill="none" stroke="url(#gold-border-grad)" stroke-width="3" stroke-linecap="round"/>
+              <ellipse cx="168" cy="64" rx="4" ry="7" fill="url(#green-orb-grad)"/>
+
+              <!-- 胸部 -->
+              <path d="M 66 52 L 134 52 L 114 88 L 86 88 Z" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+              <path d="M 52 44 L 148 44 L 100 88 Z" fill="url(#gold-border-grad)"/>
+              <path d="M 56 42 L 144 42 L 100 82 Z" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="2"/>
+              <circle cx="100" cy="56" r="11" fill="url(#green-orb-grad)" stroke="#ffffff" stroke-width="2" class="drop-shadow-md"/>
+
+              <!-- 頭部 -->
+              <rect x="88" y="34" width="24" height="10" fill="#334155" rx="2"/>
+              <rect x="78" y="16" width="44" height="26" rx="6" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="2"/>
+              <path d="M 84 28 L 116 28 L 110 39 L 90 39 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+              <path d="M 84 22 L 116 22 L 112 28 L 88 28 Z" fill="url(#green-orb-grad)" stroke="#ffffff" stroke-width="1"/>
+              <circle cx="94" cy="25" r="1.5" fill="#ffffff"/>
+              <circle cx="106" cy="25" r="1.5" fill="#ffffff"/>
+              <polygon points="100,16 104,22 96,22" fill="url(#gold-border-grad)"/>
+              <path d="M 100 0 L 104 18 L 96 18 Z" fill="url(#red-armor-grad)" stroke="#991b1b" stroke-width="1"/>
+              <path d="M 94 18 L 62 6 L 80 14 Z" fill="url(#white-silver-grad)" stroke="#cbd5e1" stroke-width="1.5"/>
+              <path d="M 106 18 L 138 6 L 120 14 Z" fill="url(#white-silver-grad)" stroke="#cbd5e1" stroke-width="1.5"/>
+            </svg>
+          </div>
+
+          <!-- ボタンエリア（スタート＝赤、ずかん＝青） -->
+          <div class="mb-3 z-10 w-full max-w-sm flex gap-3 px-2">
+            <button type="button" onclick="startGameFromTitle()" class="flex-1 bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-black text-xl sm:text-2xl py-2.5 sm:py-3 px-4 rounded-2xl shadow-[0_5px_0_#991b1b] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2 font-fredoka border-2 border-white cursor-pointer">
+              <i class="fa-solid fa-play text-lg sm:text-xl"></i>
+              <span>スタート</span>
+            </button>
+            <button type="button" onclick="openZukanModal()" class="flex-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:to-indigo-700 text-white font-black text-xl sm:text-2xl py-2.5 sm:py-3 px-4 rounded-2xl shadow-[0_5px_0_#1e3a8a] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2 font-fredoka border-2 border-white cursor-pointer">
+              <i class="fa-solid fa-book-open text-lg sm:text-xl"></i>
+              <span>ずかん</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 【メイン画面 Left 2/3】問題・ヒント表示エリア -->
+    <!-- ========================================== -->
+    <div class="w-2/3 h-full p-2.5 sm:p-4 flex flex-col justify-between bg-gradient-to-b from-pink-50/90 via-white to-pink-50/60 relative border-r-2 border-pink-100">
+
+      <!-- トップステータスバー -->
+      <div class="flex justify-between items-center bg-white/95 px-3 sm:px-4 py-1.5 rounded-2xl border border-pink-200 shadow-sm z-10 gap-2">
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="bg-rose-500 text-white font-black text-xs sm:text-sm px-2.5 py-1 rounded-full shadow-sm font-fredoka flex items-center gap-1">
+            <span>ステージ</span>
+            <span id="stage-num-text" class="text-sm sm:text-base font-extrabold">1</span>
+          </span>
+          <div id="stage-stars-box" class="flex gap-1 text-amber-400 text-xs sm:text-sm">
+            <i id="star-1" class="fa-regular fa-star text-amber-300 opacity-60"></i>
+            <i id="star-2" class="fa-regular fa-star text-amber-300 opacity-60"></i>
+            <i id="star-3" class="fa-regular fa-star text-amber-300 opacity-60"></i>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div class="flex items-center gap-1 bg-amber-50 border-2 border-amber-300 px-2 sm:px-2.5 py-0.5 rounded-full text-amber-700 font-extrabold text-xs sm:text-sm shadow-sm">
+            <i class="fa-solid fa-coins text-amber-500 text-xs sm:text-sm"></i>
+            <span id="score-text" class="font-fredoka text-xs sm:text-base">0</span> pt
+          </div>
+
+          <div class="flex items-center gap-1.5 sm:gap-2 bg-rose-50/90 border border-rose-200 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-inner max-w-[130px] sm:max-w-xs">
+            <span class="text-[10px] sm:text-xs font-black text-rose-600 whitespace-nowrap hidden sm:flex items-center gap-1">
+              <i class="fa-solid fa-gift text-amber-500"></i> ボーナスまで
+            </span>
+            <div class="w-12 sm:w-20 bg-rose-200 h-2 sm:h-3 rounded-full overflow-hidden border border-rose-300">
+              <div id="bonus-meter-bar" class="bg-gradient-to-r from-amber-400 to-rose-500 h-full w-0 transition-all duration-300"></div>
+            </div>
+            <span id="bonus-meter-text" class="text-[9px] sm:text-xs font-bold text-rose-700 font-fredoka whitespace-nowrap">0/50</span>
+          </div>
+
+          <button type="button" onclick="openZukanModal()" class="bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-black text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full shadow border border-white flex items-center gap-1 active:translate-y-0.5 cursor-pointer">
+            <i class="fa-solid fa-book-open"></i>
+            <span>ずかん</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 中央計算式 ＆ 段階的ヒントエリア -->
+      <div class="flex flex-col items-center justify-center my-auto py-1 z-10">
+        
+        <!-- visual calculation card -->
+        <div id="problem-box" class="flex flex-col items-center justify-center bg-white/95 px-4 sm:px-7 py-3 sm:py-4 rounded-3xl border-2 border-pink-200 shadow-lg relative min-h-[140px] sm:min-h-[160px] min-w-[300px] sm:min-w-[440px]">
+
+          <!-- メイン計算式行 -->
+          <div id="formula-line" class="flex items-center justify-center gap-1.5 sm:gap-3 z-10">
+          </div>
+
+          <!-- さくらんぼ・逆さくらんぼ動的ヒントエリア -->
+          <div id="cherry-container" class="mt-2 flex items-center justify-center gap-4 transition-all opacity-0 pointer-events-none hidden">
+          </div>
+
+          <!-- 数図ブロック・10の束・上下配置ヒントエリア -->
+          <div id="block-hint-container" class="w-full flex flex-col items-center justify-center gap-1 mt-2 transition-all opacity-0 pointer-events-none hidden">
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 下部解説バー ＆ ヒーロードック -->
+      <div class="relative w-full z-10">
+        <div id="hero-dock" class="absolute -top-12 left-1 flex items-end gap-1.5 overflow-x-auto max-w-[80%] z-20 pointer-events-auto pb-0.5">
+        </div>
+
+        <div class="flex items-center justify-between bg-white/80 px-3 py-1.5 rounded-xl border border-pink-200 shadow-sm pl-2">
+          <div class="flex items-center gap-1.5 text-pink-600 font-bold text-xs">
+            <i class="fa-solid fa-comment-dots text-pink-400 text-sm"></i>
+            <span id="msg-text">テンキーで こたえを いれて「けってい」をおしてね！</span>
+          </div>
+          <div id="hint-pts-badge" class="text-[11px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full z-10 flex-shrink-0">
+            ノーヒントで +4pt
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 【メイン画面 Right 1/3】テンキー入力エリア -->
+    <!-- ========================================== -->
+    <div class="w-1/3 h-full p-2 sm:p-3 bg-gradient-to-b from-pink-100/80 to-rose-100/80 flex flex-col items-center justify-between border-l border-pink-200 relative overflow-hidden">
+      
+      <!-- 案内ラベル -->
+      <div class="text-xs sm:text-sm font-black text-rose-600 bg-white/95 px-3 py-1 rounded-full border border-pink-300 shadow-sm mb-1 flex items-center gap-1.5 flex-shrink-0">
+        <i class="fa-solid fa-calculator text-pink-500"></i>
+        <span>テンキーで にゅうりょく</span>
+      </div>
+
+      <!-- テンキーグリッド (3列 × 4行) -->
+      <div class="grid grid-cols-3 gap-1.5 sm:gap-2.5 w-full max-w-[240px] sm:max-w-[280px] my-auto p-1">
+        <button type="button" onclick="pressKey('1')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">1</button>
+        <button type="button" onclick="pressKey('2')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">2</button>
+        <button type="button" onclick="pressKey('3')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">3</button>
+        
+        <button type="button" onclick="pressKey('4')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">4</button>
+        <button type="button" onclick="pressKey('5')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">5</button>
+        <button type="button" onclick="pressKey('6')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">6</button>
+
+        <button type="button" onclick="pressKey('7')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">7</button>
+        <button type="button" onclick="pressKey('8')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">8</button>
+        <button type="button" onclick="pressKey('9')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">9</button>
+
+        <button type="button" onclick="pressKey('clear')" class="keypad-btn aspect-square text-xs sm:text-sm font-black text-rose-500 bg-rose-50 flex items-center justify-center border-rose-300">けす</button>
+        <button type="button" onclick="pressKey('0')" class="keypad-btn aspect-square font-fredoka text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center">0</button>
+        <button type="button" onclick="pressKey('enter')" class="keypad-btn aspect-square text-xs sm:text-sm font-black text-white bg-gradient-to-r from-rose-500 to-pink-500 flex items-center justify-center border-rose-400 shadow-[0_4px_0_#be123c]">けってい</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- モーダル各種 (点つなぎ / ボーナス stage / ずかん) -->
+  <div id="dot-modal" class="fixed inset-0 bg-pink-950/80 backdrop-blur-md flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-50 p-2 sm:p-4">
+    <div class="w-full max-w-3xl bg-white rounded-3xl p-3 sm:p-6 shadow-2xl border-4 border-rose-300 flex flex-col items-center justify-between relative overflow-hidden">
+      <div class="flex justify-between items-center w-full bg-pink-50/80 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl border border-pink-200">
+        <h2 class="text-base sm:text-2xl font-black text-rose-600 flex items-center gap-2 font-fredoka">
+          <i class="fa-solid fa-pen-ruler text-pink-500"></i>
+          <span>てんをつなごう！ (<span id="dot-motif-name" class="text-rose-600">ほし</span>)</span>
+        </h2>
+        <div class="text-xs sm:text-base font-black text-gray-700 font-fredoka">
+          つないだ点: <span id="dot-connected-val" class="text-rose-600 text-sm sm:text-xl font-bold">0</span> / 100
+        </div>
+      </div>
+
+      <div class="my-3 relative flex items-center justify-center w-full">
+        <canvas id="dot-canvas" width="720" height="380" class="w-full max-h-[58vh] object-contain bg-[#fff8f9] rounded-2xl border-2 border-pink-100 shadow-inner"></canvas>
+      </div>
+
+      <div class="flex items-center justify-between w-full pt-2 border-t border-pink-100 gap-2">
+        <span class="text-[11px] sm:text-sm font-extrabold text-pink-500 flex items-center gap-1">
+          ポイントのぶん、てんが伸びるよ！100まで繋がるとヒーローがやってくる！
+        </span>
+        <button type="button" onclick="closeDotModal()" class="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-black text-xs sm:text-base px-5 sm:px-7 py-2 sm:py-2.5 rounded-full shadow-[0_4px_0_#be123c] active:translate-y-1 active:shadow-none transition-all flex items-center gap-2 font-fredoka border border-white flex-shrink-0 cursor-pointer">
+          <span>つぎへすすむ</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <div id="hero-get-overlay" class="absolute inset-0 bg-white/95 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center gap-3 opacity-0 pointer-events-none transition-opacity duration-300 z-30 p-4">
+        <div class="text-2xl sm:text-4xl font-black text-rose-600 font-fredoka animate-bounce text-center">
+          🎉 あたらしいヒーローゲット！ 🎉
+        </div>
+        <div id="new-hero-svg-box" class="my-2 transform scale-125"></div>
+        <div id="new-hero-name" class="text-xl sm:text-3xl font-black text-amber-600 font-fredoka"></div>
+        <button type="button" onclick="closeHeroGetOverlay()" class="mt-2 bg-gradient-to-r from-amber-400 to-rose-500 hover:from-amber-500 hover:to-rose-600 text-white font-black text-base sm:text-xl px-8 py-2.5 rounded-2xl shadow-[0_4px_0_#be123c] active:translate-y-1 active:shadow-none transition-all font-fredoka border-2 border-white cursor-pointer">
+          やったー！
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 多彩なボーナスステージモーダル -->
+  <div id="bonus-modal" class="fixed inset-0 bg-gradient-to-br from-purple-900/90 via-pink-900/90 to-rose-900/90 backdrop-blur-md flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-50 p-2 sm:p-4">
+    <div class="w-full max-w-4xl aspect-[16/9] max-h-[96vh] bg-white rounded-3xl p-3 sm:p-4 shadow-2xl border-4 border-yellow-300 flex flex-col justify-between relative overflow-hidden">
+      
+      <!-- ヘッダーエリア -->
+      <div class="flex justify-between items-center bg-yellow-50 px-3 py-1.5 sm:py-2 rounded-2xl border border-yellow-200 gap-2">
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <i class="fa-solid fa-trophy text-amber-500 text-sm sm:text-lg"></i>
+          <h2 id="bonus-type-title" class="text-xs sm:text-base font-black text-amber-800 font-fredoka">
+            ボーナスステージ
+          </h2>
+        </div>
+        
+        <!-- タイマー・スコア -->
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div class="bg-rose-100 border-2 border-rose-400 px-2 py-0.5 rounded-full font-black text-[10px] sm:text-xs text-rose-700 flex items-center gap-1 shadow-sm">
+            <i class="fa-solid fa-stopwatch text-rose-500"></i>
+            <span>のこり <span id="bonus-timer-val" class="inline-block w-5 sm:w-6 text-center text-xs sm:text-sm font-fredoka text-rose-600">60</span> びょう</span>
+          </div>
+          <div class="bg-amber-100 border-2 border-amber-400 px-2 py-0.5 rounded-full font-black text-[10px] sm:text-xs text-amber-800 flex items-center gap-1 shadow-sm">
+            <i class="fa-solid fa-star text-amber-500"></i>
+            <span>+<span id="bonus-score-val" class="inline-block min-w-[1.2rem] text-center text-xs sm:text-sm font-fredoka text-amber-600">0</span> pt</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- メイン出題エリア -->
+      <div id="bonus-main-content" class="flex-1 my-2 relative overflow-hidden flex flex-col items-center justify-center gap-3">
+        <div id="bonus-question-box" class="flex items-center justify-center px-6 py-3 bg-pink-50 border-2 border-pink-200 rounded-2xl shadow-sm min-h-[70px] sm:min-h-[90px] w-full max-w-2xl">
+        </div>
+
+        <div id="bonus-choices-grid" class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 w-full max-w-xl mx-auto py-2">
+        </div>
+
+        <div id="timeup-overlay" class="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-3 opacity-0 pointer-events-none transition-opacity duration-300 z-20">
+          <div class="text-3xl sm:text-5xl font-black text-rose-600 font-fredoka animate-bounce">
+            ⏰ タイムアップ！
+          </div>
+          <div class="text-xl sm:text-2xl font-black text-amber-700">
+            ぜんぶで <span id="timeup-score-val" class="text-3xl sm:text-4xl text-rose-600 font-fredoka">0</span> pt ゲットしたよ！
+          </div>
+          <button type="button" onclick="closeBonusModal()" class="bg-gradient-to-r from-amber-400 to-rose-500 hover:from-amber-500 hover:to-rose-600 text-white font-black text-lg px-6 py-2 rounded-xl shadow-md border-2 border-white cursor-pointer">つぎへすすむ</button>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-1 border-t border-gray-100 text-[11px] sm:text-xs font-bold text-amber-600">
+        <span>1ふんかんで たくさん こたえよう！</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 図鑑モーダル -->
+  <div id="zukan-modal" class="fixed inset-0 bg-pink-950/80 backdrop-blur-md flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-50 p-2 sm:p-4">
+    <div class="w-full max-w-4xl aspect-[16/9] max-h-[96vh] bg-white rounded-3xl p-2.5 sm:p-4 shadow-2xl border-4 border-cyan-300 flex flex-col justify-between relative overflow-hidden">
+      
+      <div class="flex justify-between items-center bg-cyan-50 px-4 py-1.5 rounded-2xl border border-cyan-200">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-book-open text-cyan-600 text-xl"></i>
+          <h2 class="text-base sm:text-xl font-black text-cyan-800">ヒーローずかん (ぜん20しゅるい)</h2>
+        </div>
+        <button type="button" onclick="closeZukanModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-3 py-1 rounded-full text-xs transition-all cursor-pointer z-50">
+          <i class="fa-solid fa-xmark mr-1"></i> とじる
+        </button>
+      </div>
+
+      <div class="flex-1 my-1.5 overflow-hidden">
+        <div id="zukan-grid" class="grid grid-cols-5 grid-rows-4 gap-1 sm:gap-1.5 h-full w-full">
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center bg-pink-50 px-3 py-1 rounded-xl border border-pink-200 text-xs font-bold text-pink-700">
+        <span>100てん つなぐと あたらしい ヒーローが 仲間になるよ！</span>
+        <span>あつめたヒーロー: <span id="zukan-count" class="font-black text-rose-600 font-fredoka text-sm">0</span> / 20</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script>
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // ------------------------------------------
+    // 1. グローバル変数・基本データ・音源処理
+    // ------------------------------------------
+    let stage = 1;
+    let totalScore = 0;
+    let unlockedHeroIds = [];
+    let masterQueue = [];
+    let currentProblems = [];
+    let problemIndex = 0;
+    let stagePointsGained = 0;
+    let isLocked = false;
+    let isHintActive = false;
+    let isHintUsedCurrentProblem = false;
+    let inputVal = '';
+    let hintStep = 1;
+
+    let connectedDotCount = 0;
+    let currentMotif = null;
+    let currentMotifIndex = -1;
+    let dotPoints = [];
+
+    let isBonusActive = false;
+    let bonusTimeLeft = 60;
+    let bonusEarnedPts = 0;
+    let bonusTimerId = null;
+    let lastBonusTriggeredScore = 0;
+
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'tap') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'correct') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.08);
+          osc.frequency.setValueAtTime(783.99, now + 0.16);
+          osc.frequency.setValueAtTime(1046.50, now + 0.24);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'cherry') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.setValueAtTime(880, now + 0.08);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'stage-start') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554.37, now + 0.1);
+          osc.frequency.setValueAtTime(659.25, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else if (type === 'dot') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600 + (connectedDotCount % 20) * 20, now);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.04);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } else if (type === 'hero-appear') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(392, now);
+          osc.frequency.setValueAtTime(523.25, now + 0.12);
+          osc.frequency.setValueAtTime(659.25, now + 0.24);
+          osc.frequency.setValueAtTime(783.99, now + 0.36);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.6);
+          osc.start(now);
+          osc.stop(now + 0.6);
+        } else if (type === 'fanfare') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.1);
+          osc.frequency.setValueAtTime(783.99, now + 0.2);
+          osc.frequency.setValueAtTime(1046.50, now + 0.3);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.7);
+          osc.start(now);
+          osc.stop(now + 0.7);
+        }
+      } catch (e) {}
+    }
+
+    // 20ヒーローデータ (添付ファイルと同等の全定義)
+    const HEROES_DATA = [
+      { id: 1, name: 'さくらレッド', color: '#ef4444', suit: '#f87171', colorName: 'レッド', poseName: '正義のキック' },
+      { id: 2, name: 'スカイブルー', color: '#0284c7', suit: '#38bdf8', colorName: 'ブルー', poseName: '疾風ブレイク' },
+      { id: 3, name: 'サンシャイン', color: '#eab308', suit: '#fde047', colorName: 'イエロー', poseName: '閃光パンチ' },
+      { id: 4, name: 'グリーンフォレスト', color: '#22c55e', suit: '#4ade80', colorName: 'グリーン', poseName: '自然のバリア' },
+      { id: 5, name: 'パープルナイト', color: '#a855f7', suit: '#c084fc', colorName: 'パープル', poseName: '幻影ステップ' },
+      { id: 6, name: 'オレンジフレア', color: '#f97316', suit: '#fb923c', colorName: 'オレンジ', poseName: '爆炎キャノン' },
+      { id: 7, name: 'ピンクサクラ', color: '#ec4899', suit: '#f472b6', colorName: 'ピンク', poseName: '華麗なる舞' },
+      { id: 8, name: 'シアンウェーブ', color: '#06b6d4', suit: '#22d3ee', colorName: 'シアン', poseName: '氷結スラッシュ' },
+      { id: 9, name: 'ライムスパーク', color: '#84cc16', suit: '#a3e635', colorName: 'ライム', poseName: '電光石火' },
+      { id: 10, name: 'アンバーボルト', color: '#d97706', suit: '#fbbf24', colorName: 'アンバー', poseName: '大地の大地雷' },
+      { id: 11, name: 'ローズウィング', color: '#f43f5e', suit: '#fb7185', colorName: 'ローズ', poseName: '鳳凰の翼' },
+      { id: 12, name: 'インディゴシャドー', color: '#6366f1', suit: '#818cf8', colorName: 'インディゴ', poseName: '影分身の術' },
+      { id: 13, name: 'エメラルドガーディアン', color: '#10b981', suit: '#34d399', colorName: 'エメラルド', poseName: '絶対防御' },
+      { id: 14, name: 'ルビーブレード', color: '#e11d48', suit: '#fda4af', colorName: 'ルビー', poseName: '一閃斬り' },
+      { id: 15, name: 'サファイアストーム', color: '#2563eb', suit: '#60a5fa', colorName: 'サファイア', poseName: '竜巻ストーム' },
+      { id: 16, name: 'トパーズシールド', color: '#ca8a04', suit: '#facc15', colorName: 'トパーズ', poseName: '金剛壁' },
+      { id: 17, name: 'クリスタルノヴァ', color: '#14b8a6', suit: '#2dd4bf', colorName: 'クリスタル', poseName: '星屑の光' },
+      { id: 18, name: 'マゼンタスター', color: '#d946ef', suit: '#e879f9', colorName: 'マゼンタ', poseName: '流星キック' },
+      { id: 19, name: 'コバルトゼロ', color: '#1d4ed8', suit: '#3b82f6', colorName: 'コバルト', poseName: '絶対零度' },
+      { id: 20, name: 'ゴールドマックス', color: '#ca8a04', suit: '#fef08a', colorName: 'ゴールド', poseName: '究極覚醒' }
+    ];
+
+    // 点つなぎモチーフデータ
+    const MOTIFS_DATA = [
+      {
+        id: 'star', name: 'ほし', keypoints: [
+          {x: 360, y: 30}, {x: 420, y: 130}, {x: 540, y: 130}, {x: 440, y: 200},
+          {x: 480, y: 320}, {x: 360, y: 240}, {x: 240, y: 320}, {x: 280, y: 200},
+          {x: 180, y: 130}, {x: 300, y: 130}, {x: 360, y: 30}
+        ]
+      },
+      {
+        id: 'heart', name: 'ハート', keypoints: [
+          {x: 360, y: 100}, {x: 440, y: 40}, {x: 540, y: 70}, {x: 560, y: 150},
+          {x: 480, y: 250}, {x: 360, y: 340}, {x: 240, y: 250}, {x: 160, y: 150},
+          {x: 180, y: 70}, {x: 280, y: 40}, {x: 360, y: 100}
+        ]
+      },
+      {
+        id: 'rocket', name: 'ロケット', keypoints: [
+          {x: 360, y: 30}, {x: 440, y: 100}, {x: 440, y: 260}, {x: 500, y: 320},
+          {x: 440, y: 320}, {x: 400, y: 350}, {x: 320, y: 350}, {x: 280, y: 320},
+          {x: 220, y: 320}, {x: 280, y: 260}, {x: 280, y: 100}, {x: 360, y: 30}
+        ]
+      },
+      {
+        id: 'crown', name: '王かん', keypoints: [
+          {x: 180, y: 300}, {x: 180, y: 120}, {x: 270, y: 200}, {x: 360, y: 80},
+          {x: 450, y: 200}, {x: 540, y: 120}, {x: 540, y: 300}, {x: 180, y: 300}
+        ]
+      }
+    ];
+
+    // モチーフの頂点群から正確に100個の点座標を生成する関数
+    function generate100PointsFromKeypoints(keypoints) {
+      if (!keypoints || keypoints.length < 2) return [];
+
+      const points = [...keypoints];
+      const first = points[0];
+      const last = points[points.length - 1];
+      if (first.x !== last.x || first.y !== last.y) {
+        points.push({ x: first.x, y: first.y });
+      }
+
+      let totalLen = 0;
+      const segments = [];
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        segments.push({ p1, p2, len, startDist: totalLen });
+        totalLen += len;
+      }
+
+      const result = [];
+      const step = totalLen / 100;
+
+      for (let i = 0; i < 100; i++) {
+        const targetDist = i * step;
+        let seg = segments.find(s => targetDist >= s.startDist && targetDist <= s.startDist + s.len);
+        if (!seg) seg = segments[segments.length - 1];
+
+        const segProgress = seg.len > 0 ? (targetDist - seg.startDist) / seg.len : 0;
+        const x = seg.p1.x + (seg.p2.x - seg.p1.x) * segProgress;
+        const y = seg.p1.y + (seg.p2.y - seg.p1.y) * segProgress;
+        result.push({ x: Math.round(x), y: Math.round(y) });
+      }
+
+      return result;
+    }
+
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // ------------------------------------------
+    // 2. 1年生全11パターンの問題生成プログラム (教科書掲載の220問限定)
+    // ------------------------------------------
+    function generate1stGradeMasterProblems() {
+      const list = [
+        // 1. 10までのたしざん (20問)
+        { pattern: 1, n1: 3, op: '+', n2: 2, ans: 5 },
+        { pattern: 1, n1: 5, op: '+', n2: 4, ans: 9 },
+        { pattern: 1, n1: 7, op: '+', n2: 1, ans: 8 },
+        { pattern: 1, n1: 2, op: '+', n2: 8, ans: 10 },
+        { pattern: 1, n1: 3, op: '+', n2: 4, ans: 7 },
+        { pattern: 1, n1: 2, op: '+', n2: 6, ans: 8 },
+        { pattern: 1, n1: 4, op: '+', n2: 5, ans: 9 },
+        { pattern: 1, n1: 1, op: '+', n2: 7, ans: 8 },
+        { pattern: 1, n1: 8, op: '+', n2: 1, ans: 9 },
+        { pattern: 1, n1: 2, op: '+', n2: 1, ans: 3 },
+        { pattern: 1, n1: 3, op: '+', n2: 6, ans: 9 },
+        { pattern: 1, n1: 2, op: '+', n2: 7, ans: 9 },
+        { pattern: 1, n1: 2, op: '+', n2: 2, ans: 4 },
+        { pattern: 1, n1: 6, op: '+', n2: 2, ans: 8 },
+        { pattern: 1, n1: 5, op: '+', n2: 2, ans: 7 },
+        { pattern: 1, n1: 6, op: '+', n2: 3, ans: 9 },
+        { pattern: 1, n1: 4, op: '+', n2: 2, ans: 6 },
+        { pattern: 1, n1: 1, op: '+', n2: 8, ans: 9 },
+        { pattern: 1, n1: 5, op: '+', n2: 5, ans: 10 },
+        { pattern: 1, n1: 6, op: '+', n2: 4, ans: 10 },
+
+        // 2. 10までのひきざん (20問)
+        { pattern: 2, n1: 9, op: '-', n2: 4, ans: 5 },
+        { pattern: 2, n1: 5, op: '-', n2: 1, ans: 4 },
+        { pattern: 2, n1: 6, op: '-', n2: 3, ans: 3 },
+        { pattern: 2, n1: 8, op: '-', n2: 1, ans: 7 },
+        { pattern: 2, n1: 7, op: '-', n2: 3, ans: 4 },
+        { pattern: 2, n1: 6, op: '-', n2: 4, ans: 2 },
+        { pattern: 2, n1: 9, op: '-', n2: 6, ans: 3 },
+        { pattern: 2, n1: 6, op: '-', n2: 5, ans: 1 },
+        { pattern: 2, n1: 8, op: '-', n2: 3, ans: 5 },
+        { pattern: 2, n1: 7, op: '-', n2: 4, ans: 3 },
+        { pattern: 2, n1: 5, op: '-', n2: 2, ans: 3 },
+        { pattern: 2, n1: 7, op: '-', n2: 1, ans: 6 },
+        { pattern: 2, n1: 8, op: '-', n2: 6, ans: 2 },
+        { pattern: 2, n1: 3, op: '-', n2: 2, ans: 1 },
+        { pattern: 2, n1: 10, op: '-', n2: 5, ans: 5 },
+        { pattern: 2, n1: 8, op: '-', n2: 4, ans: 4 },
+        { pattern: 2, n1: 9, op: '-', n2: 3, ans: 6 },
+        { pattern: 2, n1: 7, op: '-', n2: 6, ans: 1 },
+        { pattern: 2, n1: 10, op: '-', n2: 2, ans: 8 },
+        { pattern: 2, n1: 10, op: '-', n2: 7, ans: 3 },
+
+        // 3. 10といくつ・10からのひきざん (8問)
+        { pattern: 3, n1: 10, op: '+', n2: 5, ans: 15 },
+        { pattern: 3, n1: 10, op: '+', n2: 2, ans: 12 },
+        { pattern: 3, n1: 10, op: '+', n2: 8, ans: 18 },
+        { pattern: 3, n1: 10, op: '+', n2: 10, ans: 20 },
+        { pattern: 3, n1: 13, op: '-', n2: 3, ans: 10 },
+        { pattern: 3, n1: 18, op: '-', n2: 8, ans: 10 },
+        { pattern: 3, n1: 11, op: '-', n2: 1, ans: 10 },
+        { pattern: 3, n1: 19, op: '-', n2: 9, ans: 10 },
+
+        // 4. 2けたと1けたのたしざん・ひきざん くりあがりくりさがりなし (24問)
+        { pattern: 4, n1: 17, op: '+', n2: 2, ans: 19 },
+        { pattern: 4, n1: 15, op: '+', n2: 3, ans: 18 },
+        { pattern: 4, n1: 14, op: '+', n2: 3, ans: 17 },
+        { pattern: 4, n1: 12, op: '+', n2: 6, ans: 18 },
+        { pattern: 4, n1: 16, op: '+', n2: 2, ans: 18 },
+        { pattern: 4, n1: 13, op: '+', n2: 3, ans: 16 },
+        { pattern: 4, n1: 14, op: '+', n2: 5, ans: 19 },
+        { pattern: 4, n1: 18, op: '+', n2: 1, ans: 19 },
+        { pattern: 4, n1: 15, op: '+', n2: 1, ans: 16 },
+        { pattern: 4, n1: 11, op: '+', n2: 8, ans: 19 },
+        { pattern: 4, n1: 12, op: '+', n2: 5, ans: 17 },
+        { pattern: 4, n1: 13, op: '+', n2: 2, ans: 15 },
+        { pattern: 4, n1: 18, op: '-', n2: 5, ans: 13 },
+        { pattern: 4, n1: 16, op: '-', n2: 4, ans: 12 },
+        { pattern: 4, n1: 18, op: '-', n2: 7, ans: 11 },
+        { pattern: 4, n1: 14, op: '-', n2: 3, ans: 11 },
+        { pattern: 4, n1: 13, op: '-', n2: 1, ans: 12 },
+        { pattern: 4, n1: 17, op: '-', n2: 3, ans: 14 },
+        { pattern: 4, n1: 19, op: '-', n2: 5, ans: 14 },
+        { pattern: 4, n1: 16, op: '-', n2: 2, ans: 14 },
+        { pattern: 4, n1: 19, op: '-', n2: 2, ans: 17 },
+        { pattern: 4, n1: 12, op: '-', n2: 1, ans: 11 },
+        { pattern: 4, n1: 16, op: '-', n2: 3, ans: 13 },
+        { pattern: 4, n1: 15, op: '-', n2: 4, ans: 11 },
+
+        // 5. 3つのかずのけいさん (12問)
+        { pattern: 5, n1: 5, op1: '+', n2: 1, op2: '+', n3: 2, subAns: 6, ans: 8 },
+        { pattern: 5, n1: 7, op1: '+', n2: 3, op2: '+', n3: 4, subAns: 10, ans: 14 },
+        { pattern: 5, n1: 6, op1: '+', n2: 4, op2: '+', n3: 8, subAns: 10, ans: 18 },
+        { pattern: 5, n1: 7, op1: '-', n2: 2, op2: '-', n3: 1, subAns: 5, ans: 4 },
+        { pattern: 5, n1: 14, op1: '-', n2: 4, op2: '-', n3: 2, subAns: 10, ans: 8 },
+        { pattern: 5, n1: 19, op1: '-', n2: 9, op2: '-', n3: 3, subAns: 10, ans: 7 },
+        { pattern: 5, n1: 9, op1: '-', n2: 8, op2: '+', n3: 5, subAns: 1, ans: 6 },
+        { pattern: 5, n1: 10, op1: '-', n2: 7, op2: '+', n3: 6, subAns: 3, ans: 9 },
+        { pattern: 5, n1: 16, op1: '-', n2: 6, op2: '+', n3: 4, subAns: 10, ans: 14 },
+        { pattern: 5, n1: 4, op1: '+', n2: 3, op2: '-', n3: 5, subAns: 7, ans: 2 },
+        { pattern: 5, n1: 10, op1: '+', n2: 9, op2: '-', n3: 6, subAns: 19, ans: 13 },
+        { pattern: 5, n1: 13, op1: '+', n2: 2, op2: '-', n3: 4, subAns: 15, ans: 11 },
+
+        // 6. くりあがりのあるたしざん (32問)
+        { pattern: 6, n1: 9, op: '+', n2: 5, ans: 14 },
+        { pattern: 6, n1: 5, op: '+', n2: 6, ans: 11 },
+        { pattern: 6, n1: 8, op: '+', n2: 9, ans: 17 },
+        { pattern: 6, n1: 7, op: '+', n2: 4, ans: 11 },
+        { pattern: 6, n1: 6, op: '+', n2: 7, ans: 13 },
+        { pattern: 6, n1: 9, op: '+', n2: 6, ans: 15 },
+        { pattern: 6, n1: 8, op: '+', n2: 3, ans: 11 },
+        { pattern: 6, n1: 4, op: '+', n2: 9, ans: 13 },
+        { pattern: 6, n1: 3, op: '+', n2: 9, ans: 12 },
+        { pattern: 6, n1: 9, op: '+', n2: 8, ans: 17 },
+        { pattern: 6, n1: 8, op: '+', n2: 8, ans: 16 },
+        { pattern: 6, n1: 7, op: '+', n2: 5, ans: 12 },
+        { pattern: 6, n1: 6, op: '+', n2: 5, ans: 11 },
+        { pattern: 6, n1: 5, op: '+', n2: 8, ans: 13 },
+        { pattern: 6, n1: 3, op: '+', n2: 8, ans: 11 },
+        { pattern: 6, n1: 7, op: '+', n2: 9, ans: 16 },
+        { pattern: 6, n1: 2, op: '+', n2: 9, ans: 11 },
+        { pattern: 6, n1: 9, op: '+', n2: 7, ans: 16 },
+        { pattern: 6, n1: 7, op: '+', n2: 7, ans: 14 },
+        { pattern: 6, n1: 8, op: '+', n2: 4, ans: 12 },
+        { pattern: 6, n1: 9, op: '+', n2: 9, ans: 18 },
+        { pattern: 6, n1: 6, op: '+', n2: 8, ans: 14 },
+        { pattern: 6, n1: 9, op: '+', n2: 3, ans: 12 },
+        { pattern: 6, n1: 8, op: '+', n2: 5, ans: 13 },
+        { pattern: 6, n1: 5, op: '+', n2: 7, ans: 12 },
+        { pattern: 6, n1: 4, op: '+', n2: 8, ans: 12 },
+        { pattern: 6, n1: 7, op: '+', n2: 6, ans: 13 },
+        { pattern: 6, n1: 7, op: '+', n2: 8, ans: 15 },
+        { pattern: 6, n1: 8, op: '+', n2: 7, ans: 15 },
+        { pattern: 6, n1: 5, op: '+', n2: 9, ans: 14 },
+        { pattern: 6, n1: 9, op: '+', n2: 2, ans: 11 },
+        { pattern: 6, n1: 6, op: '+', n2: 6, ans: 12 },
+
+        // 7. くりさがりのあるひきざん (32問)
+        { pattern: 7, n1: 17, op: '-', n2: 9, ans: 8 },
+        { pattern: 7, n1: 15, op: '-', n2: 6, ans: 9 },
+        { pattern: 7, n1: 13, op: '-', n2: 4, ans: 9 },
+        { pattern: 7, n1: 14, op: '-', n2: 5, ans: 9 },
+        { pattern: 7, n1: 13, op: '-', n2: 9, ans: 4 },
+        { pattern: 7, n1: 16, op: '-', n2: 8, ans: 8 },
+        { pattern: 7, n1: 12, op: '-', n2: 8, ans: 4 },
+        { pattern: 7, n1: 11, op: '-', n2: 8, ans: 3 },
+        { pattern: 7, n1: 11, op: '-', n2: 3, ans: 8 },
+        { pattern: 7, n1: 13, op: '-', n2: 5, ans: 8 },
+        { pattern: 7, n1: 17, op: '-', n2: 8, ans: 9 },
+        { pattern: 7, n1: 12, op: '-', n2: 3, ans: 9 },
+        { pattern: 7, n1: 16, op: '-', n2: 7, ans: 9 },
+        { pattern: 7, n1: 14, op: '-', n2: 6, ans: 8 },
+        { pattern: 7, n1: 15, op: '-', n2: 9, ans: 6 },
+        { pattern: 7, n1: 11, op: '-', n2: 9, ans: 2 },
+        { pattern: 7, n1: 12, op: '-', n2: 7, ans: 5 },
+        { pattern: 7, n1: 11, op: '-', n2: 5, ans: 6 },
+        { pattern: 7, n1: 13, op: '-', n2: 7, ans: 6 },
+        { pattern: 7, n1: 11, op: '-', n2: 4, ans: 7 },
+        { pattern: 7, n1: 14, op: '-', n2: 9, ans: 5 },
+        { pattern: 7, n1: 15, op: '-', n2: 7, ans: 8 },
+        { pattern: 7, n1: 13, op: '-', n2: 6, ans: 7 },
+        { pattern: 7, n1: 12, op: '-', n2: 4, ans: 8 },
+        { pattern: 7, n1: 15, op: '-', n2: 8, ans: 7 },
+        { pattern: 7, n1: 18, op: '-', n2: 9, ans: 9 },
+        { pattern: 7, n1: 11, op: '-', n2: 7, ans: 4 },
+        { pattern: 7, n1: 13, op: '-', n2: 8, ans: 5 },
+        { pattern: 7, n1: 11, op: '-', n2: 6, ans: 5 },
+        { pattern: 7, n1: 12, op: '-', n2: 9, ans: 3 },
+        { pattern: 7, n1: 12, op: '-', n2: 6, ans: 6 },
+        { pattern: 7, n1: 16, op: '-', n2: 9, ans: 7 },
+
+        // 8. 0のけいさん・おなじかずのひきざん (16問)
+        { pattern: 8, n1: 5, op: '+', n2: 0, ans: 5 },
+        { pattern: 8, n1: 2, op: '+', n2: 0, ans: 2 },
+        { pattern: 8, n1: 8, op: '+', n2: 0, ans: 8 },
+        { pattern: 8, n1: 9, op: '+', n2: 0, ans: 9 },
+        { pattern: 8, n1: 0, op: '+', n2: 3, ans: 3 },
+        { pattern: 8, n1: 0, op: '+', n2: 6, ans: 6 },
+        { pattern: 8, n1: 0, op: '+', n2: 7, ans: 7 },
+        { pattern: 8, n1: 0, op: '+', n2: 2, ans: 2 },
+        { pattern: 8, n1: 9, op: '-', n2: 9, ans: 0 },
+        { pattern: 8, n1: 7, op: '-', n2: 7, ans: 0 },
+        { pattern: 8, n1: 4, op: '-', n2: 4, ans: 0 },
+        { pattern: 8, n1: 6, op: '-', n2: 6, ans: 0 },
+        { pattern: 8, n1: 4, op: '-', n2: 0, ans: 4 },
+        { pattern: 8, n1: 6, op: '-', n2: 0, ans: 6 },
+        { pattern: 8, n1: 9, op: '-', n2: 0, ans: 9 },
+        { pattern: 8, n1: 1, op: '-', n2: 0, ans: 1 },
+
+        // 9. なにじゅうのたしざん・ひきざん (16問)
+        { pattern: 9, n1: 50, op: '+', n2: 20, ans: 70 },
+        { pattern: 9, n1: 70, op: '+', n2: 10, ans: 80 },
+        { pattern: 9, n1: 40, op: '+', n2: 50, ans: 90 },
+        { pattern: 9, n1: 20, op: '+', n2: 60, ans: 80 },
+        { pattern: 9, n1: 30, op: '+', n2: 60, ans: 90 },
+        { pattern: 9, n1: 40, op: '+', n2: 40, ans: 80 },
+        { pattern: 9, n1: 70, op: '+', n2: 20, ans: 90 },
+        { pattern: 9, n1: 10, op: '+', n2: 90, ans: 100 },
+        { pattern: 9, n1: 70, op: '-', n2: 40, ans: 30 },
+        { pattern: 9, n1: 80, op: '-', n2: 60, ans: 20 },
+        { pattern: 9, n1: 90, op: '-', n2: 30, ans: 60 },
+        { pattern: 9, n1: 60, op: '-', n2: 50, ans: 10 },
+        { pattern: 9, n1: 40, op: '-', n2: 20, ans: 20 },
+        { pattern: 9, n1: 50, op: '-', n2: 10, ans: 40 },
+        { pattern: 9, n1: 100, op: '-', n2: 70, ans: 30 },
+        { pattern: 9, n1: 100, op: '-', n2: 20, ans: 80 },
+
+        // 10. なにじゅうたす・なにじゅうなんひく (16問)
+        { pattern: 10, n1: 60, op: '+', n2: 2, ans: 62 },
+        { pattern: 10, n1: 40, op: '+', n2: 3, ans: 43 },
+        { pattern: 10, n1: 30, op: '+', n2: 9, ans: 39 },
+        { pattern: 10, n1: 70, op: '+', n2: 7, ans: 77 },
+        { pattern: 10, n1: 90, op: '+', n2: 4, ans: 94 },
+        { pattern: 10, n1: 50, op: '+', n2: 8, ans: 58 },
+        { pattern: 10, n1: 80, op: '+', n2: 6, ans: 86 },
+        { pattern: 10, n1: 20, op: '+', n2: 5, ans: 25 },
+        { pattern: 10, n1: 58, op: '-', n2: 8, ans: 50 },
+        { pattern: 10, n1: 91, op: '-', n2: 1, ans: 90 },
+        { pattern: 10, n1: 86, op: '-', n2: 6, ans: 80 },
+        { pattern: 10, n1: 24, op: '-', n2: 4, ans: 20 },
+        { pattern: 10, n1: 49, op: '-', n2: 9, ans: 40 },
+        { pattern: 10, n1: 33, op: '-', n2: 3, ans: 30 },
+        { pattern: 10, n1: 75, op: '-', n2: 5, ans: 70 },
+        { pattern: 10, n1: 67, op: '-', n2: 7, ans: 60 },
+
+        // 11. 2けたたす1けた・2けたひく1けた (24問)
+        { pattern: 11, n1: 36, op: '+', n2: 1, ans: 37 },
+        { pattern: 11, n1: 72, op: '+', n2: 5, ans: 77 },
+        { pattern: 11, n1: 65, op: '+', n2: 3, ans: 68 },
+        { pattern: 11, n1: 81, op: '+', n2: 8, ans: 89 },
+        { pattern: 11, n1: 57, op: '+', n2: 2, ans: 59 },
+        { pattern: 11, n1: 22, op: '+', n2: 6, ans: 28 },
+        { pattern: 11, n1: 23, op: '+', n2: 4, ans: 27 },
+        { pattern: 11, n1: 91, op: '+', n2: 7, ans: 98 },
+        { pattern: 11, n1: 41, op: '+', n2: 5, ans: 46 },
+        { pattern: 11, n1: 84, op: '+', n2: 3, ans: 87 },
+        { pattern: 11, n1: 52, op: '+', n2: 2, ans: 54 },
+        { pattern: 11, n1: 73, op: '+', n2: 6, ans: 79 },
+        { pattern: 11, n1: 48, op: '-', n2: 5, ans: 43 },
+        { pattern: 11, n1: 96, op: '-', n2: 3, ans: 93 },
+        { pattern: 11, n1: 37, op: '-', n2: 6, ans: 31 },
+        { pattern: 11, n1: 65, op: '-', n2: 4, ans: 61 },
+        { pattern: 11, n1: 79, op: '-', n2: 7, ans: 72 },
+        { pattern: 11, n1: 93, op: '-', n2: 2, ans: 91 },
+        { pattern: 11, n1: 29, op: '-', n2: 8, ans: 21 },
+        { pattern: 11, n1: 88, op: '-', n2: 6, ans: 82 },
+        { pattern: 11, n1: 64, op: '-', n2: 1, ans: 63 },
+        { pattern: 11, n1: 39, op: '-', n2: 4, ans: 35 },
+        { pattern: 11, n1: 78, op: '-', n2: 7, ans: 71 },
+        { pattern: 11, n1: 57, op: '-', n2: 5, ans: 52 }
+      ];
+
+      const grouped = {};
+      for (let i = 1; i <= 11; i++) grouped[i] = [];
+      list.forEach(item => {
+        if (!grouped[item.pattern]) grouped[item.pattern] = [];
+        grouped[item.pattern].push(item);
+      });
+
+      for (let i = 1; i <= 11; i++) {
+        grouped[i] = shuffleArray(grouped[i]);
+      }
+
+      const result = [];
+      while (true) {
+        const activePatterns = [];
+        for (let i = 1; i <= 11; i++) {
+          if (grouped[i].length > 0) {
+            activePatterns.push(i);
+          }
+        }
+        if (activePatterns.length === 0) break;
+
+        const roundOrder = shuffleArray(activePatterns);
+        for (const pat of roundOrder) {
+          result.push(grouped[pat].pop());
+        }
+      }
+
+      return result;
+    }
+
+    // ------------------------------------------
+    // 3. メイン計算ゲーム進行ロジック
+    // ------------------------------------------
+    function startGameFromTitle() {
+      initAudio();
+      playSound('stage-start');
+      document.getElementById('title-screen').classList.add('opacity-0', 'pointer-events-none');
+      
+      masterQueue = generate1stGradeMasterProblems();
+      stage = 1;
+      totalScore = 0;
+      stagePointsGained = 0;
+      unlockedHeroIds = [];
+      connectedDotCount = 0;
+      currentMotif = null;
+      currentMotifIndex = -1;
+      
+      initStage();
+    }
+
+    function initStage() {
+      if (masterQueue.length < 5) {
+        masterQueue = masterQueue.concat(generate1stGradeMasterProblems());
+      }
+      currentProblems = masterQueue.splice(0, 5);
+      problemIndex = 0;
+      stagePointsGained = 0;
+      
+      updateUIHeader();
+      renderHeroDock();
+      loadCurrentProblem();
+    }
+
+    function updateUIHeader() {
+      document.getElementById('stage-num-text').innerText = stage;
+      document.getElementById('score-text').innerText = totalScore;
+      
+      const starsBox = document.getElementById('stage-stars-box');
+      if (starsBox) {
+        starsBox.innerHTML = '';
+        const totalProbs = (currentProblems && currentProblems.length) ? currentProblems.length : 5;
+        for (let i = 0; i < totalProbs; i++) {
+          const icon = document.createElement('i');
+          if (i < problemIndex) {
+            icon.className = 'fa-solid fa-star text-amber-400 font-bold animate-pop-in';
+          } else {
+            icon.className = 'fa-regular fa-star text-amber-300 opacity-60';
+          }
+          starsBox.appendChild(icon);
+        }
+      }
+
+      const currentMeter = totalScore % 50;
+      const pct = (currentMeter / 50) * 100;
+      document.getElementById('bonus-meter-bar').style.width = `${pct}%`;
+      document.getElementById('bonus-meter-text').innerText = `${currentMeter}/50`;
+    }
+
+    function loadCurrentProblem() {
+      isLocked = false;
+      isHintActive = false;
+      isHintUsedCurrentProblem = false;
+      inputVal = '';
+      hintStep = 1;
+
+      const prob = currentProblems[problemIndex];
+      const formulaLine = document.getElementById('formula-line');
+      const cherryContainer = document.getElementById('cherry-container');
+      const blockHintContainer = document.getElementById('block-hint-container');
+
+      cherryContainer.innerHTML = '';
+      cherryContainer.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+      blockHintContainer.innerHTML = '';
+      blockHintContainer.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+
+      document.getElementById('msg-text').innerText = 'テンキーで こたえを いれて「けってい」をおしてね！';
+      document.getElementById('hint-pts-badge').innerText = 'ノーヒントで +4pt';
+      document.getElementById('hint-pts-badge').className = 'text-[11px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full z-10 flex-shrink-0';
+
+      if (prob.pattern === 5) {
+        formulaLine.innerHTML = `
+          <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n1}</span>
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka">${prob.op1}</span>
+          <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n2}</span>
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka">${prob.op2}</span>
+          <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n3}</span>
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka">=</span>
+          <div id="main-ans-box" class="target-active min-w-[3.5rem] sm:min-w-[4.5rem] h-12 sm:h-16 bg-pink-50 border-4 border-pink-400 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-black text-rose-600 font-fredoka shadow-inner px-2">
+            <span id="answer-text"></span>
+          </div>
+          <button type="button" onclick="activateHint()" class="ml-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-white font-black text-xs sm:text-sm px-3 py-1.5 rounded-xl shadow-[0_3px_0_#d97706] active:translate-y-0.5 cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-yellow-100"></i>
+            <span>ヒント</span>
+          </button>
+        `;
+      } else {
+        formulaLine.innerHTML = `
+          <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n1}</span>
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka">${prob.op}</span>
+          <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n2}</span>
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka">=</span>
+          <div id="main-ans-box" class="target-active min-w-[3.5rem] sm:min-w-[4.5rem] h-12 sm:h-16 bg-pink-50 border-4 border-pink-400 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-black text-rose-600 font-fredoka shadow-inner px-2">
+            <span id="answer-text"></span>
+          </div>
+          <button type="button" onclick="activateHint()" class="ml-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-white font-black text-xs sm:text-sm px-3 py-1.5 rounded-xl shadow-[0_3px_0_#d97706] active:translate-y-0.5 cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-yellow-100"></i>
+            <span>ヒント</span>
+          </button>
+        `;
+      }
+    }
+
+    function pressKey(key) {
+      if (isLocked) return;
+      initAudio();
+
+      if (key === 'clear') {
+        playSound('tap');
+        inputVal = '';
+        updateInputDisplay();
+        return;
+      }
+
+      if (key === 'enter') {
+        submitAnswer();
+        return;
+      }
+
+      if (/^[0-9]$/.test(key)) {
+        if (inputVal.length >= 3) return;
+        playSound('tap');
+        inputVal += key;
+        updateInputDisplay();
+      }
+    }
+
+    function updateInputDisplay() {
+      const el = document.getElementById('answer-text');
+      if (el) {
+        el.innerText = inputVal;
+      }
+    }
+
+    function submitAnswer() {
+      if (isLocked || inputVal === '') return;
+      const userAns = parseInt(inputVal, 10);
+      const prob = currentProblems[problemIndex];
+      if (!prob) return;
+
+      if (userAns === prob.ans) {
+        isLocked = true;
+        playSound('correct');
+
+        const ansBox = document.getElementById('main-ans-box');
+        if (ansBox) {
+          ansBox.classList.add('animate-pop-in');
+          ansBox.style.borderColor = '#10b981';
+          ansBox.style.backgroundColor = '#d1fae5';
+        }
+
+        const pts = isHintUsedCurrentProblem ? 2 : 4;
+        totalScore += pts;
+        stagePointsGained += pts;
+
+        problemIndex++;
+        updateUIHeader();
+
+        setTimeout(() => {
+          if (problemIndex >= currentProblems.length) {
+            if (stage % 3 === 0) {
+              openBonusModal();
+            } else {
+              openDotModal(stagePointsGained, false);
+            }
+          } else {
+            loadCurrentProblem();
+          }
+        }, 1000);
+      } else {
+        playSound('tap');
+        const ansBox = document.getElementById('main-ans-box');
+        if (ansBox) {
+          ansBox.classList.add('animate-shake');
+          setTimeout(() => {
+            ansBox.classList.remove('animate-shake');
+          }, 400);
+        }
+        inputVal = '';
+        updateInputDisplay();
+        document.getElementById('msg-text').innerText = 'ちがうよ！ もういちど かんがえてみよう！';
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        pressKey(e.key);
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        pressKey('clear');
+      } else if (e.key === 'Enter') {
+        pressKey('enter');
+      }
+    });
+
+    // ------------------------------------------
+    // 4. ヒントダイアグラム構築
+    // ------------------------------------------
+    function activateHint() {
+      if (isLocked) return;
+      initAudio();
+      playSound('cherry');
+      isHintActive = true;
+      isHintUsedCurrentProblem = true;
+
+      document.getElementById('hint-pts-badge').innerText = 'ヒントつかい +2pt';
+      document.getElementById('hint-pts-badge').className = 'text-[11px] font-bold text-sky-600 bg-sky-100 px-2 py-0.5 rounded-full z-10 flex-shrink-0';
+
+      const prob = currentProblems[problemIndex];
+      const blockHintContainer = document.getElementById('block-hint-container');
+
+      blockHintContainer.innerHTML = '';
+
+      if (prob.pattern === 6) {
+        blockHintContainer.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+        renderPattern6DirectCherryHint(prob);
+      } else if (prob.pattern === 7) {
+        blockHintContainer.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+        renderPattern7DirectCherryHint(prob);
+      } else {
+        blockHintContainer.classList.remove('hidden', 'pointer-events-none');
+        blockHintContainer.classList.add('opacity-100');
+
+        if (prob.pattern === 1) {
+          blockHintContainer.innerHTML = renderPattern1HintHTML(prob.n1, prob.n2);
+        } else if (prob.pattern === 2) {
+          blockHintContainer.innerHTML = renderPattern2HintHTML(prob.n1, prob.n2);
+        } else if (prob.pattern === 3 || prob.pattern === 4) {
+          blockHintContainer.innerHTML = renderPattern3And4HintHTML(prob.n1, prob.n2, prob.op);
+        } else if (prob.pattern === 5) {
+          blockHintContainer.innerHTML = renderPattern5HintHTML(prob);
+        } else if (prob.pattern === 8) {
+          blockHintContainer.innerHTML = renderPattern8HintHTML(prob.n1, prob.n2, prob.op);
+        } else if (prob.pattern === 9) {
+          blockHintContainer.innerHTML = renderPattern9HintHTML(prob.n1, prob.n2, prob.op);
+        } else if (prob.pattern === 10 || prob.pattern === 11) {
+          blockHintContainer.innerHTML = renderPattern10And11HintHTML(prob.n1, prob.n2, prob.op);
+        } else {
+          blockHintContainer.innerHTML = renderPattern1HintHTML(prob.n1, prob.n2);
+        }
+      }
+
+      document.getElementById('msg-text').innerText = 'ヒントを さんこうに こたえを つくろう！';
+    }
+
+    // △6用：くりあがりたしざん
+    function renderPattern6DirectCherryHint(prob) {
+      const formulaLine = document.getElementById('formula-line');
+      const makeTen = 10 - prob.n1;
+      const remainder = prob.n2 - makeTen;
+
+      formulaLine.innerHTML = `
+        <div id="hint-capsule-container" class="flex items-start justify-center gap-1.5 sm:gap-3 z-10 relative py-1 overflow-visible">
+          <!-- 動的フィット用SVGカプセル枠 -->
+          <svg class="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+            <rect id="dynamic-capsule-rect" x="0" y="0" width="0" height="0" rx="24" fill="none" stroke="#1e293b" stroke-width="3.5" opacity="0" class="transition-all duration-150" />
+          </svg>
+
+          <!-- n1 と その下の 10 -->
+          <div class="flex flex-col items-center relative">
+            <span id="capsule-target-1" class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka inline-block px-1">${prob.n1}</span>
+            <div class="mt-7 sm:mt-10 font-black text-slate-800 text-lg sm:text-2xl font-fredoka">10</div>
+          </div>
+
+          <!-- + -->
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka mt-0.5 sm:mt-1">+</span>
+
+          <!-- n2 から直接枝分かれするさくらんぼ -->
+          <div class="flex flex-col items-center">
+            <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n2}</span>
+            <svg width="48" height="22" viewBox="0 0 48 22" class="my-0.5">
+              <path d="M 24 2 L 9 20 M 24 2 L 39 20" stroke="#059669" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+            <div class="flex gap-1.5 sm:gap-2.5">
+              <div id="capsule-target-2" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-pink-100 border-2 sm:border-3 border-emerald-500 flex items-center justify-center font-black text-slate-800 text-lg sm:text-2xl font-fredoka shadow-sm inline-flex">
+                ${makeTen}
+              </div>
+              <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-pink-100 border-2 sm:border-3 border-emerald-500 flex items-center justify-center font-black text-slate-800 text-lg sm:text-2xl font-fredoka shadow-sm">
+                ${remainder}
+              </div>
+            </div>
+          </div>
+
+          <!-- = -->
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka mt-0.5 sm:mt-1">=</span>
+
+          <!-- 解答入力枠 -->
+          <div id="main-ans-box" class="target-active min-w-[3.5rem] sm:min-w-[4.5rem] h-12 sm:h-16 bg-pink-50 border-4 border-pink-400 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-black text-rose-600 font-fredoka shadow-inner px-2">
+            <span id="answer-text">${inputVal}</span>
+          </div>
+
+          <button type="button" onclick="activateHint()" class="ml-1 sm:ml-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 text-white font-black text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-xl shadow-[0_3px_0_#d97706] active:translate-y-0.5 cursor-pointer flex items-center gap-1 mt-0.5">
+            <i class="fa-solid fa-lightbulb text-yellow-100"></i>
+            <span>ヒント</span>
+          </button>
+        </div>
+      `;
+
+      requestAnimationFrame(() => adjustCapsulePosition());
+    }
+
+    // △7用：くりさがりひきざん
+    function renderPattern7DirectCherryHint(prob) {
+      const formulaLine = document.getElementById('formula-line');
+      const ones = prob.n1 - 10;
+      const rem = 10 - prob.n2;
+
+      formulaLine.innerHTML = `
+        <div id="hint-capsule-container" class="flex items-start justify-center gap-1.5 sm:gap-3 z-10 relative py-1 overflow-visible">
+          <!-- 動的フィット用SVGカプセル枠 -->
+          <svg class="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+            <rect id="dynamic-capsule-rect" x="0" y="0" width="0" height="0" rx="24" fill="none" stroke="#1e293b" stroke-width="3.5" opacity="0" class="transition-all duration-150" />
+          </svg>
+
+          <!-- n1 から直接枝分かれするさくらんぼ -->
+          <div class="flex flex-col items-center relative">
+            <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n1}</span>
+            <svg width="48" height="22" viewBox="0 0 48 22" class="my-0.5">
+              <path d="M 24 2 L 9 20 M 24 2 L 39 20" stroke="#059669" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+            <div class="flex gap-2 sm:gap-3 relative">
+              <div class="flex flex-col items-center">
+                <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-pink-100 border-2 sm:border-3 border-emerald-500 flex items-center justify-center font-black text-slate-800 text-base sm:text-xl font-fredoka shadow-sm">
+                  10
+                </div>
+                <!-- 10からひく数をひいた結果（10の下に表示） -->
+                <div id="capsule-target-1" class="mt-3 sm:mt-4 font-black text-slate-800 text-lg sm:text-2xl font-fredoka inline-block px-1">${rem}</div>
+              </div>
+              <div id="capsule-target-2" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-pink-100 border-2 sm:border-3 border-emerald-500 flex items-center justify-center font-black text-slate-800 text-base sm:text-xl font-fredoka shadow-sm inline-flex">
+                ${ones}
+              </div>
+            </div>
+          </div>
+
+          <!-- - -->
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka mt-0.5 sm:mt-1">-</span>
+
+          <!-- n2 -->
+          <div class="flex flex-col items-center">
+            <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n2}</span>
+          </div>
+
+          <!-- = -->
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka mt-0.5 sm:mt-1">=</span>
+
+          <!-- 解答入力枠 -->
+          <div id="main-ans-box" class="target-active min-w-[3.5rem] sm:min-w-[4.5rem] h-12 sm:h-16 bg-pink-50 border-4 border-pink-400 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-black text-rose-600 font-fredoka shadow-inner px-2">
+            <span id="answer-text">${inputVal}</span>
+          </div>
+
+          <button type="button" onclick="activateHint()" class="ml-1 sm:ml-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 text-white font-black text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-xl shadow-[0_3px_0_#d97706] active:translate-y-0.5 cursor-pointer flex items-center gap-1 mt-0.5">
+            <i class="fa-solid fa-lightbulb text-yellow-100"></i>
+            <span>ヒント</span>
+          </button>
+        </div>
+      `;
+
+      requestAnimationFrame(() => adjustCapsulePosition());
+    }
+
+    // カプセル枠位置自動計算
+    function adjustCapsulePosition() {
+      const container = document.getElementById('hint-capsule-container');
+      const target1 = document.getElementById('capsule-target-1');
+      const target2 = document.getElementById('capsule-target-2');
+      const rectSVG = document.getElementById('dynamic-capsule-rect');
+
+      if (!container || !target1 || !target2 || !rectSVG) return;
+
+      const cRect = container.getBoundingClientRect();
+      const r1 = target1.getBoundingClientRect();
+      const r2 = target2.getBoundingClientRect();
+
+      const x1 = (r1.left + r1.width / 2) - cRect.left;
+      const y1 = (r1.top + r1.height / 2) - cRect.top;
+      const x2 = (r2.left + r2.width / 2) - cRect.left;
+      const y2 = (r2.top + r2.height / 2) - cRect.top;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+      // カプセル形を少し長くし、さくらんぼ・数字との間にゆとり（すき間）を確保
+      const paddingX = 36;
+      const capsuleWidth = dist + paddingX * 2;
+      const capsuleHeight = Math.max(r1.height, r2.height) + 24;
+
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2;
+
+      rectSVG.setAttribute('width', capsuleWidth);
+      rectSVG.setAttribute('height', capsuleHeight);
+      rectSVG.setAttribute('rx', capsuleHeight / 2);
+      rectSVG.setAttribute('x', -capsuleWidth / 2);
+      rectSVG.setAttribute('y', -capsuleHeight / 2);
+      rectSVG.setAttribute('transform', `translate(${cx}, ${cy}) rotate(${angle})`);
+      rectSVG.setAttribute('opacity', '1');
+    }
+
+    window.addEventListener('resize', () => {
+      adjustCapsulePosition();
+    });
+
+    // ------------------------------------------
+    // 5. ヒントHTMLヘルパー関数
+    // ------------------------------------------
+    // たしざん: 6~9は2段、左右並び
+    function renderPattern1HintHTML(n1, n2) {
+      return `
+        <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+          <div class="flex gap-1">${createDotsHTML(n1, 'orange', true)}</div>
+          <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
+          <div class="flex gap-1">${createDotsHTML(n2, 'orange', true)}</div>
+        </div>
+      `;
+    }
+
+    // ひきざん: 6~9は1段、上下並び
+    function renderPattern2HintHTML(n1, n2) {
+      return `
+        <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
+          <div class="flex gap-1 justify-end w-full">${createDotsHTML(n1, 'orange', false)}</div>
+          <div class="w-full border-b border-pink-300"></div>
+          <div class="flex items-center justify-end gap-2 w-full">
+            <span class="text-2xl font-black text-rose-500 font-fredoka mr-auto">-</span>
+            <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPattern3And4HintHTML(n1, n2, op) {
+      const tens1 = Math.floor(n1 / 10);
+      const ones1 = n1 % 10;
+
+      if (op === '+') {
+        return `
+          <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex items-center gap-1.5">
+              ${createTenBundlesHTML(tens1, true)}
+              ${ones1 > 0 ? `<div class="flex gap-1 ml-1">${createDotsHTML(ones1, 'orange', true)}</div>` : ''}
+            </div>
+            <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
+            <div class="flex gap-1">${n2 === 10 ? createTenBundlesHTML(1, true) : createDotsHTML(n2, 'orange', true)}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
+            <div class="flex items-center gap-1.5 justify-end w-full">
+              ${createTenBundlesHTML(tens1, false)}
+              ${ones1 > 0 ? `<div class="flex gap-1 ml-1">${createDotsHTML(ones1, 'orange', false)}</div>` : ''}
+            </div>
+            <div class="w-full border-b border-pink-300"></div>
+            <div class="flex items-center justify-end gap-2 w-full">
+              <span class="text-2xl font-black text-rose-500 font-fredoka mr-auto">-</span>
+              <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // 3つのかずのけいさん: 先の計算式 (n1 op1 n2) に逆さくらんぼをピッタリ自動結合
+    function renderPattern5HintHTML(prob) {
+      return `
+        <div class="flex items-start gap-2 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm font-fredoka">
+          <!-- 最初の計算グループ -->
+          <div class="flex flex-col items-center">
+            <div class="flex items-center gap-1.5 text-2xl sm:text-4xl font-black text-slate-800">
+              <span>${prob.n1}</span>
+              <span class="text-rose-500">${prob.op1}</span>
+              <span>${prob.n2}</span>
+            </div>
+            <svg width="44" height="18" viewBox="0 0 44 18" class="my-0.5">
+              <path d="M 6 2 L 22 15 M 38 2 L 22 15" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <div class="w-9 h-9 rounded-full bg-white border-2 border-slate-700 flex items-center justify-center font-black text-slate-800 text-base shadow-sm">
+              ${prob.subAns}
+            </div>
+          </div>
+
+          <!-- 2つ目の演算子と数値 -->
+          <div class="flex items-center gap-1.5 text-2xl sm:text-4xl font-black text-slate-800 mt-1">
+            <span class="text-rose-500">${prob.op2}</span>
+            <span>${prob.n3}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPattern8HintHTML(n1, n2, op) {
+      if (n1 === 0) {
+        return `
+          <div class="flex items-center gap-3 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="w-8 h-8 rounded-lg border-2 border-pink-300 bg-white"></div>
+            <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
+            <div class="flex gap-1">${createDotsHTML(n2, 'orange', true)}</div>
+          </div>
+        `;
+      } else if (n2 === 0) {
+        return `
+          <div class="flex flex-col items-center gap-1 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex gap-1">${createDotsHTML(n1, 'orange', false)}</div>
+            <div class="w-full h-7 rounded-lg border-2 border-cyan-300 bg-sky-50 mt-1"></div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-center gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex gap-1">${createDotsHTML(n1, 'orange', false)}</div>
+            <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
+          </div>
+        `;
+      }
+    }
+
+    function renderPattern9HintHTML(n1, n2, op) {
+      const t1 = Math.floor(n1 / 10);
+      const t2 = Math.floor(n2 / 10);
+      if (op === '+') {
+        return `
+          <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex gap-1.5">${createTenBundlesHTML(t1, true)}</div>
+            <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
+            <div class="flex gap-1.5">${createTenBundlesHTML(t2, true)}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
+            <div class="flex gap-1.5 justify-end w-full">${createTenBundlesHTML(t1, false)}</div>
+            <div class="w-full border-b border-pink-300"></div>
+            <div class="flex items-center justify-end gap-2 w-full">
+              <span class="text-2xl font-black text-rose-500 font-fredoka mr-auto">-</span>
+              <div class="flex gap-1.5">${createBlueTenBundlesHTML(t2, false)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function renderPattern10And11HintHTML(n1, n2, op) {
+      const t1 = Math.floor(n1 / 10);
+      const o1 = n1 % 10;
+      if (op === '+') {
+        return `
+          <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex flex-col gap-1">
+              <div class="flex gap-1.5">${createTenBundlesHTML(t1, true)}</div>
+              ${o1 > 0 ? `<div class="flex gap-1 mt-1">${createDotsHTML(o1, 'orange', true)}</div>` : ''}
+            </div>
+            <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
+            <div class="flex gap-1">${createDotsHTML(n2, 'orange', true)}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
+            <div class="flex items-center gap-1.5 justify-end w-full">
+              <div class="flex gap-1.5">${createTenBundlesHTML(t1, false)}</div>
+              ${o1 > 0 ? `<div class="flex gap-1 ml-1">${createDotsHTML(o1, 'orange', false)}</div>` : ''}
+            </div>
+            <div class="w-full border-b border-pink-300"></div>
+            <div class="flex items-center justify-end gap-2 w-full">
+              <span class="text-2xl font-black text-rose-500 font-fredoka mr-auto">-</span>
+              <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // ドット描画：isAdditionがtrueの場合、6〜9は2段（5個＋残り）
+    function createDotsHTML(count, color, isAddition = true) {
+      if (isAddition && count >= 6 && count <= 9) {
+        const topCount = 5;
+        const bottomCount = count - 5;
+        let topHTML = '';
+        let bottomHTML = '';
+        for (let i = 0; i < topCount; i++) {
+          topHTML += `<div class="w-6 h-6 rounded-md bg-white border border-slate-300 flex items-center justify-center shadow-xs"><div class="w-3.5 h-3.5 rounded-full ${color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></div></div>`;
+        }
+        for (let i = 0; i < bottomCount; i++) {
+          bottomHTML += `<div class="w-6 h-6 rounded-md bg-white border border-slate-300 flex items-center justify-center shadow-xs"><div class="w-3.5 h-3.5 rounded-full ${color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></div></div>`;
+        }
+        return `
+          <div class="flex flex-col gap-1">
+            <div class="flex gap-1">${topHTML}</div>
+            <div class="flex gap-1">${bottomHTML}</div>
+          </div>
+        `;
+      } else {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+          html += `<div class="w-6 h-6 rounded-md bg-white border border-slate-300 flex items-center justify-center shadow-xs"><div class="w-3.5 h-3.5 rounded-full ${color === 'orange' ? 'bg-orange-500' : 'bg-blue-500'}"></div></div>`;
+        }
+        return html;
+      }
+    }
+
+    // 四角ブロック描画
+    function createSquareBlocksHTML(count, color, isAddition = false) {
+      if (isAddition && count >= 6 && count <= 9) {
+        const topCount = 5;
+        const bottomCount = count - 5;
+        let topHTML = '';
+        let bottomHTML = '';
+        for (let i = 0; i < topCount; i++) {
+          topHTML += `<div class="w-6 h-6 rounded-md bg-white border border-slate-300 flex items-center justify-center shadow-xs"><div class="w-3.5 h-3.5 rounded-sm ${color === 'blue' ? 'bg-blue-600' : 'bg-orange-500'}"></div></div>`;
+        }
+        for (let i = 0; i < bottomCount; i++) {
+          bottomHTML += `<div class="w-6 h-6 rounded-md bg-white border border-slate-300 flex items-center justify-center shadow-xs"><div class="w-3.5 h-3.5 rounded-sm ${color === 'blue' ? 'bg-blue-600' : 'bg-orange-500'}"></div></div>`;
+        }
+        return `
+          <div class="flex flex-col gap-1">
+            <div class="flex gap-1">${topHTML}</div>
+            <div class="flex gap-1">${bottomHTML}</div>
+          </div>
+        `;
+      } else {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+          html += `<div class="w-6 h-6 rounded-md bg-white border border-slate-300 flex items-center justify-center shadow-xs"><div class="w-3.5 h-3.5 rounded-sm ${color === 'blue' ? 'bg-blue-600' : 'bg-orange-500'}"></div></div>`;
+        }
+        return html;
+      }
+    }
+
+    // 教科書添付画像とまったく同じ10の束SVGイラスト描画
+    function createTenBundlesHTML(count, isAddition = true) {
+      const singleBundle = `
+        <svg class="w-7 h-11 drop-shadow-xs overflow-visible" viewBox="0 0 34 54">
+          <!-- 緑のスティック10本の束 -->
+          <rect x="2" y="6" width="30" height="42" rx="3" fill="#86efac" stroke="#16a34a" stroke-width="1.2"/>
+          <path d="M 5 6 L 5 48 M 8 6 L 8 48 M 11 6 L 11 48 M 14 6 L 14 48 M 17 6 L 17 48 M 20 6 L 20 48 M 23 6 L 23 48 M 26 6 L 26 48 M 29 6 L 29 48" stroke="#22c55e" stroke-width="1"/>
+          <!-- スティック上部の丸キャップ10個 -->
+          <ellipse cx="5" cy="6" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="8" cy="5.5" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="11" cy="5" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="14" cy="4.8" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="17" cy="4.5" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="20" cy="4.8" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="23" cy="5" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="26" cy="5.5" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <ellipse cx="29" cy="6" rx="1.8" ry="2.2" fill="#4ade80" stroke="#15803d" stroke-width="0.8"/>
+          <!-- 中央を束ねる白紙帯と「10」の文字 -->
+          <rect x="1" y="20" width="32" height="18" rx="2" fill="#ffffff" stroke="#475569" stroke-width="1"/>
+          <text x="17" y="34" font-family="sans-serif" font-weight="900" font-size="14" fill="#1e293b" text-anchor="middle">10</text>
+        </svg>
+      `;
+
+      if (isAddition && count >= 6 && count <= 9) {
+        const topCount = 5;
+        const bottomCount = count - 5;
+        let topHTML = '';
+        let bottomHTML = '';
+        for (let i = 0; i < topCount; i++) topHTML += singleBundle;
+        for (let i = 0; i < bottomCount; i++) bottomHTML += singleBundle;
+        return `
+          <div class="flex flex-col gap-1">
+            <div class="flex gap-1">${topHTML}</div>
+            <div class="flex gap-1">${bottomHTML}</div>
+          </div>
+        `;
+      } else {
+        let html = '';
+        for (let i = 0; i < count; i++) html += singleBundle;
+        return html;
+      }
+    }
+
+    function createBlueTenBundlesHTML(count, isAddition = false) {
+      const singleBundle = `
+        <svg class="w-7 h-11 drop-shadow-xs overflow-visible" viewBox="0 0 34 54">
+          <rect x="2" y="6" width="30" height="42" rx="3" fill="#93c5fd" stroke="#2563eb" stroke-width="1.2"/>
+          <path d="M 5 6 L 5 48 M 8 6 L 8 48 M 11 6 L 11 48 M 14 6 L 14 48 M 17 6 L 17 48 M 20 6 L 20 48 M 23 6 L 23 48 M 26 6 L 26 48 M 29 6 L 29 48" stroke="#3b82f6" stroke-width="1"/>
+          <ellipse cx="5" cy="6" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="8" cy="5.5" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="11" cy="5" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="14" cy="4.8" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="17" cy="4.5" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="20" cy="4.8" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="23" cy="5" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="26" cy="5.5" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <ellipse cx="29" cy="6" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
+          <rect x="1" y="20" width="32" height="18" rx="2" fill="#ffffff" stroke="#1d4ed8" stroke-width="1"/>
+          <text x="17" y="34" font-family="sans-serif" font-weight="900" font-size="14" fill="#1e3a8a" text-anchor="middle">10</text>
+        </svg>
+      `;
+
+      if (isAddition && count >= 6 && count <= 9) {
+        const topCount = 5;
+        const bottomCount = count - 5;
+        let topHTML = '';
+        let bottomHTML = '';
+        for (let i = 0; i < topCount; i++) topHTML += singleBundle;
+        for (let i = 0; i < bottomCount; i++) bottomHTML += singleBundle;
+        return `
+          <div class="flex flex-col gap-1">
+            <div class="flex gap-1">${topHTML}</div>
+            <div class="flex gap-1">${bottomHTML}</div>
+          </div>
+        `;
+      } else {
+        let html = '';
+        for (let i = 0; i < count; i++) html += singleBundle;
+        return html;
+      }
+    }
+
+    // モチーフ選出用ヘルパー
+    function selectNextMotif() {
+      if (!MOTIFS_DATA || MOTIFS_DATA.length === 0) return;
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * MOTIFS_DATA.length);
+      } while (MOTIFS_DATA.length > 1 && newIndex === currentMotifIndex);
+      
+      currentMotifIndex = newIndex;
+      currentMotif = MOTIFS_DATA[currentMotifIndex];
+    }
+
+    // ------------------------------------------
+    // 6. てんをつなごうモーダル処理
+    // ------------------------------------------
+    function openDotModal(ptsGained = 0, isBonusFinished = false) {
+      initAudio();
+      playSound('tap');
+      const modal = document.getElementById('dot-modal');
+      if (!modal) return;
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100');
+
+      // 完走していない場合は同一イラストを維持し、未設定時のみ新規選出する
+      if (!currentMotif) {
+        selectNextMotif();
+      }
+      document.getElementById('dot-motif-name').innerText = currentMotif.name;
+      dotPoints = generate100PointsFromKeypoints(currentMotif.keypoints);
+
+      const startCount = connectedDotCount;
+      const targetCount = Math.min(100, connectedDotCount + ptsGained);
+
+      let current = startCount;
+      drawDotCanvas(current);
+      document.getElementById('dot-connected-val').innerText = current;
+
+      if (ptsGained > 0 && current < targetCount) {
+        const timer = setInterval(() => {
+          current++;
+          connectedDotCount = current;
+          drawDotCanvas(current);
+          document.getElementById('dot-connected-val').innerText = current;
+          playSound('dot');
+          if (current >= targetCount) {
+            clearInterval(timer);
+            if (current >= 100) {
+              setTimeout(() => {
+                triggerHeroUnlock();
+              }, 300);
+            }
+          }
+        }, 40);
+      } else if (current >= 100) {
+        setTimeout(() => {
+          triggerHeroUnlock();
+        }, 300);
+      }
+    }
+
+    function drawDotCanvas(activeCount = connectedDotCount) {
+      const canvas = document.getElementById('dot-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!dotPoints || dotPoints.length === 0) return;
+
+      dotPoints.forEach((p, idx) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, idx < activeCount ? 4 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = idx < activeCount ? '#e11d48' : '#fda4af';
+        ctx.fill();
+
+        if ((idx + 1) % 10 === 0 || idx === 0) {
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillStyle = '#9f1239';
+          ctx.fillText(idx + 1, p.x + 5, p.y - 5);
+        }
+      });
+
+      if (activeCount > 1) {
+        ctx.beginPath();
+        ctx.moveTo(dotPoints[0].x, dotPoints[0].y);
+        for (let i = 1; i < activeCount; i++) {
+          ctx.lineTo(dotPoints[i].x, dotPoints[i].y);
+        }
+        if (activeCount === 100) {
+          ctx.lineTo(dotPoints[0].x, dotPoints[0].y);
+        }
+        ctx.strokeStyle = '#e11d48';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+    }
+
+    function triggerHeroUnlock() {
+      const locked = HEROES_DATA.filter(h => !unlockedHeroIds.includes(h.id));
+      if (locked.length === 0) return;
+
+      const newHero = locked[0];
+      unlockedHeroIds.push(newHero.id);
+
+      playSound('hero-appear');
+      confetti({ particleCount: 80, spread: 80, origin: { y: 0.5 } });
+
+      const overlay = document.getElementById('hero-get-overlay');
+      const svgBox = document.getElementById('new-hero-svg-box');
+      document.getElementById('new-hero-name').innerText = newHero.name;
+      svgBox.innerHTML = createHeroSVG(newHero, 120);
+
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100');
+
+      renderHeroDock();
+      renderZukan();
+    }
+
+    function closeHeroGetOverlay() {
+      const overlay = document.getElementById('hero-get-overlay');
+      overlay.classList.remove('opacity-100');
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+      
+      // 完走したのでドット数とイラスト設定をリセットし、次回別のイラストを選択できるようにする
+      connectedDotCount = 0;
+      currentMotif = null;
+      
+      drawDotCanvas(0);
+      closeDotModal();
+    }
+
+    function closeDotModal() {
+      playSound('tap');
+      const modal = document.getElementById('dot-modal');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      stage++;
+      initStage();
+    }
+
+    // ------------------------------------------
+    // 7. 多彩なボーナスステージ (60秒スピード問)
+    // ------------------------------------------
+    let isBonusQuestionLocked = false;
+
+    function openBonusModal() {
+      isBonusActive = true;
+      isBonusQuestionLocked = false;
+      bonusTimeLeft = 60;
+      bonusEarnedPts = 0;
+
+      document.getElementById('bonus-timer-val').innerText = bonusTimeLeft;
+      document.getElementById('bonus-score-val').innerText = bonusEarnedPts;
+      document.getElementById('timeup-overlay').classList.add('opacity-0', 'pointer-events-none');
+
+      const modal = document.getElementById('bonus-modal');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100');
+
+      startBonusTimer();
+      renderBonusQuestion();
+    }
+
+    function startBonusTimer() {
+      clearInterval(bonusTimerId);
+      bonusTimerId = setInterval(() => {
+        bonusTimeLeft--;
+        document.getElementById('bonus-timer-val').innerText = bonusTimeLeft;
+        if (bonusTimeLeft <= 0) {
+          clearInterval(bonusTimerId);
+          finishBonusTimeUp();
+        }
+      }, 1000);
+    }
+
+    function renderBonusQuestion() {
+      const questionBox = document.getElementById('bonus-question-box');
+      const choicesGrid = document.getElementById('bonus-choices-grid');
+      questionBox.innerHTML = '';
+      choicesGrid.innerHTML = '';
+      isBonusQuestionLocked = false;
+
+      const mode = Math.floor(Math.random() * 3);
+
+      if (mode === 0) {
+        const n1 = Math.floor(Math.random() * 8) + 1;
+        const targetAns = Math.floor(Math.random() * 8) + n1 + 1;
+        const correctVal = targetAns - n1;
+
+        questionBox.innerHTML = `
+          <span class="text-3xl font-black text-slate-800 font-fredoka">${n1} + </span>
+          <div id="bonus-ans-slot" class="min-w-[3.5rem] h-12 sm:h-14 bg-pink-100 border-2 border-pink-400 rounded-xl flex items-center justify-center text-3xl font-black text-rose-600 font-fredoka shadow-inner mx-2 px-2">?</div>
+          <span class="text-3xl font-black text-slate-800 font-fredoka"> = ${targetAns}</span>
+        `;
+        renderBonusChoices(correctVal);
+      } else if (mode === 1) {
+        const isAdd = Math.random() > 0.5;
+        const n1 = Math.floor(Math.random() * 9) + 1;
+        const n2 = Math.floor(Math.random() * 8) + 1;
+        const correctOp = isAdd ? '+' : '-';
+
+        questionBox.innerHTML = `
+          <span class="text-3xl font-black text-slate-800 font-fredoka">${isAdd ? n1 : (n1+n2)} </span>
+          <div id="bonus-ans-slot" class="min-w-[3.5rem] h-12 sm:h-14 bg-pink-100 border-2 border-pink-400 rounded-xl flex items-center justify-center text-3xl font-black text-rose-600 font-fredoka shadow-inner mx-2 px-2">?</div>
+          <span class="text-3xl font-black text-slate-800 font-fredoka"> ${n2} = ${isAdd ? (n1+n2) : n1}</span>
+        `;
+
+        ['+', '-'].forEach(op => {
+          const btn = document.createElement('button');
+          btn.className = 'w-20 h-16 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 text-white font-black text-3xl rounded-2xl shadow-md border-2 border-white flex items-center justify-center cursor-pointer';
+          btn.innerText = op;
+          btn.onclick = () => submitBonusAnswer(op, op === correctOp);
+          choicesGrid.appendChild(btn);
+        });
+      } else {
+        const n1 = Math.floor(Math.random() * 9) + 1;
+        const n2 = Math.floor(Math.random() * 9) + 1;
+        const correctVal = n1 + n2;
+
+        questionBox.innerHTML = `
+          <span class="text-3xl font-black text-slate-800 font-fredoka">${n1} + ${n2} = </span>
+          <div id="bonus-ans-slot" class="min-w-[3.5rem] h-12 sm:h-14 bg-pink-100 border-2 border-pink-400 rounded-xl flex items-center justify-center text-3xl font-black text-rose-600 font-fredoka shadow-inner mx-2 px-2">?</div>
+        `;
+        renderBonusChoices(correctVal);
+      }
+    }
+
+    function renderBonusChoices(correctVal) {
+      const choicesGrid = document.getElementById('bonus-choices-grid');
+      let choices = [correctVal];
+      while (choices.length < 4) {
+        const dummy = Math.max(0, correctVal + (Math.floor(Math.random() * 7) - 3));
+        if (!choices.includes(dummy)) choices.push(dummy);
+      }
+      choices = shuffleArray(choices);
+
+      choices.forEach(val => {
+        const btn = document.createElement('button');
+        btn.className = 'w-20 h-14 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 text-white font-black text-2xl rounded-2xl shadow-md border-2 border-white flex items-center justify-center font-fredoka cursor-pointer';
+        btn.innerText = val;
+        btn.onclick = () => submitBonusAnswer(val, val === correctVal);
+        choicesGrid.appendChild(btn);
+      });
+    }
+
+    function submitBonusAnswer(val, isCorrect) {
+      if (!isBonusActive || bonusTimeLeft <= 0 || isBonusQuestionLocked) return;
+      isBonusQuestionLocked = true;
+      initAudio();
+
+      const slot = document.getElementById('bonus-ans-slot');
+      if (slot) {
+        slot.innerText = val;
+        if (isCorrect) {
+          slot.className = 'min-w-[3.5rem] h-12 sm:h-14 bg-emerald-100 border-2 border-emerald-500 rounded-xl flex items-center justify-center text-3xl font-black text-emerald-600 font-fredoka shadow-inner mx-2 px-2 animate-bounce';
+        } else {
+          slot.className = 'min-w-[3.5rem] h-12 sm:h-14 bg-rose-100 border-2 border-rose-500 rounded-xl flex items-center justify-center text-3xl font-black text-rose-600 font-fredoka shadow-inner mx-2 px-2 animate-shake';
+        }
+      }
+
+      if (isCorrect) {
+        playSound('correct');
+        bonusEarnedPts += 2;
+        totalScore += 2;
+        document.getElementById('bonus-score-val').innerText = bonusEarnedPts;
+        updateUIHeader();
+      } else {
+        playSound('tap');
+      }
+
+      setTimeout(() => {
+        if (isBonusActive && bonusTimeLeft > 0) {
+          renderBonusQuestion();
+        }
+      }, 700);
+    }
+
+    function finishBonusTimeUp() {
+      isBonusActive = false;
+      playSound('fanfare');
+      document.getElementById('timeup-score-val').innerText = bonusEarnedPts;
+      const overlay = document.getElementById('timeup-overlay');
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100');
+    }
+
+    function closeBonusModal() {
+      const modal = document.getElementById('bonus-modal');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      const combinedPts = stagePointsGained + bonusEarnedPts;
+      openDotModal(combinedPts, true);
+    }
+
+    // ------------------------------------------
+    // 8. 図鑑モーダル＆ヒーロードック描画
+    // ------------------------------------------
+    function openZukanModal() {
+      initAudio();
+      playSound('tap');
+      const modal = document.getElementById('zukan-modal');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100');
+      renderZukan();
+    }
+
+    function closeZukanModal() {
+      initAudio();
+      playSound('tap');
+      const modal = document.getElementById('zukan-modal');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    function renderZukan() {
+      const grid = document.getElementById('zukan-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      const countElem = document.getElementById('zukan-count');
+      if (countElem) countElem.innerText = unlockedHeroIds.length;
+
+      HEROES_DATA.forEach(hero => {
+        const isUnlocked = unlockedHeroIds.includes(hero.id);
+        const card = document.createElement('div');
+        
+        card.className = `relative flex flex-col items-center justify-between p-1 rounded-xl border transition-all h-full overflow-hidden ${
+          isUnlocked 
+            ? 'bg-gradient-to-b from-white to-pink-50 border-pink-300 shadow-sm' 
+            : 'bg-gray-100 border-gray-300 opacity-60'
+        }`;
+
+        card.innerHTML = `
+          <div class="absolute top-0.5 left-0.5 bg-gray-800 text-white font-extrabold text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full z-10 shadow">
+            ${hero.colorName}
+          </div>
+          ${isUnlocked ? '<div class="absolute top-0.5 right-0.5 bg-amber-400 text-amber-950 font-black text-[8px] sm:text-[9px] px-1 py-0.2 rounded-full z-10 shadow">ゲット!</div>' : ''}
+          <div class="flex-1 my-0.5 flex items-center justify-center">
+            ${isUnlocked ? createHeroSVG(hero, 34) : '<div class="w-8 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-sm font-bold"><i class="fa-solid fa-question"></i></div>'}
+          </div>
+          <div class="text-center w-full leading-tight">
+            <div class="text-[9px] sm:text-[11px] font-black ${isUnlocked ? 'text-gray-800' : 'text-gray-400'} font-fredoka truncate">
+              ${isUnlocked ? hero.name : '？？？？？'}
+            </div>
+            <div class="text-[8px] sm:text-[9px] font-bold ${isUnlocked ? 'text-pink-600' : 'text-gray-400'} truncate">
+              ${isUnlocked ? hero.poseName : '？？？？？'}
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderHeroDock() {
+      const dock = document.getElementById('hero-dock');
+      if (!dock) return;
+      dock.innerHTML = '';
+
+      unlockedHeroIds.slice(0, 5).forEach(id => {
+        const hero = HEROES_DATA.find(h => h.id === id);
+        if (hero) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'flex-shrink-0 animate-pop-in';
+          wrapper.innerHTML = createHeroSVG(hero, 40);
+          dock.appendChild(wrapper);
+        }
+      });
+    }
+
+    function createHeroSVG(hero, size = 50) {
+      if (!hero) return '';
+      const c = hero.color || '#ef4444';
+      const s = hero.suit || '#f87171';
+      
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 80 90" class="drop-shadow-md select-none pointer-events-none overflow-visible">
+          <circle cx="40" cy="45" r="36" fill="${c}" opacity="0.25"/>
+          <path d="M 36 32 L 8 6 L 4 14 L 32 44 Z" fill="${c}" stroke="#1e293b" stroke-width="1.2"/>
+          <polygon points="12,10 24,14 18,24" fill="${s}"/>
+          <path d="M 44 32 L 72 6 L 76 14 L 48 44 Z" fill="${c}" stroke="#1e293b" stroke-width="1.2"/>
+          <polygon points="68,10 56,14 62,24" fill="${s}"/>
+          <path d="M 28 54 L 18 78 L 32 80 L 36 54 Z" fill="${c}" stroke="#1e293b" stroke-width="1.5"/>
+          <path d="M 18 78 L 12 85 L 34 87 L 32 80 Z" fill="#0f172a"/>
+          <polygon points="28,60 20,66 30,66" fill="${s}"/>
+          <path d="M 52 54 L 62 78 L 48 80 L 44 54 Z" fill="${c}" stroke="#1e293b" stroke-width="1.5"/>
+          <path d="M 62 78 L 68 85 L 46 87 L 48 80 Z" fill="#0f172a"/>
+          <polygon points="52,60 60,66 50,66" fill="${s}"/>
+          <rect x="28" y="32" width="24" height="26" rx="4" fill="#1e293b" stroke="#0f172a" stroke-width="1.5"/>
+          <rect x="26" y="50" width="28" height="6" rx="2" fill="#facc15" stroke="#1e293b" stroke-width="1"/>
+          <path d="M 24 28 C 10 18 8 34 16 42 C 22 48 26 40 24 28 Z" fill="${c}" stroke="#1e293b" stroke-width="1.5"/>
+          <ellipse cx="17" cy="33" rx="3" ry="5" fill="${s}"/>
+          <path d="M 56 28 C 70 18 72 34 64 42 C 58 48 54 40 56 28 Z" fill="${c}" stroke="#1e293b" stroke-width="1.5"/>
+          <ellipse cx="63" cy="33" rx="3" ry="5" fill="${s}"/>
+          <rect x="13" y="42" width="10" height="15" rx="3" fill="${s}" stroke="#1e293b" stroke-width="1"/>
+          <circle cx="18" cy="60" r="4.5" fill="#facc15" stroke="#b45309" stroke-width="0.8"/>
+          <rect x="57" y="42" width="10" height="15" rx="3" fill="${s}" stroke="#1e293b" stroke-width="1"/>
+          <circle cx="62" cy="60" r="4.5" fill="#facc15" stroke="#b45309" stroke-width="0.8"/>
+          <path d="M 22 26 L 58 26 L 40 48 Z" fill="${s}" stroke="${c}" stroke-width="1.5"/>
+          <path d="M 24 26 L 40 44 L 56 26 L 50 26 L 40 38 L 30 26 Z" fill="#facc15"/>
+          <circle cx="40" cy="34" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1"/>
+          <rect x="30" y="10" width="20" height="18" rx="4" fill="${c}" stroke="#1e293b" stroke-width="1.5"/>
+          <path d="M 33 16 L 47 16 L 45 22 L 35 22 Z" fill="#38bdf8" stroke="#ffffff" stroke-width="1"/>
+          <circle cx="37" cy="19" r="1" fill="#ffffff"/>
+          <circle cx="43" cy="19" r="1" fill="#ffffff"/>
+          <polygon points="40,2 45,12 35,12" fill="#facc15" stroke="#ca8a04" stroke-width="0.8"/>
+          <path d="M 30 14 L 18 6 L 26 10 Z" fill="${s}" stroke="#1e293b" stroke-width="0.8"/>
+          <path d="M 50 14 L 62 6 L 54 10 Z" fill="${s}" stroke="#1e293b" stroke-width="0.8"/>
+        </svg>
+      `;
+    }
+
+    // 初期化実行
+    window.onload = function() {
+      renderZukan();
+    };
+  </script>
+</body>
+</html>
