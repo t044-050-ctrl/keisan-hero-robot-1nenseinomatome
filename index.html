@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>計算ヒーロー ロボ</title>
-  <meta property="og:title" content="計算ヒーロー ロボ">
-    <meta property="og:description" content="【１年算数たし算ひき算】１年生のまとめの練習アプリです。">
-    <meta property="og:type" content="website">
+  <title>計算ヒーロー ロボ - １年生のまとめ</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
@@ -1238,6 +1235,9 @@
       } else if (prob.pattern === 7) {
         blockHintContainer.classList.add('hidden', 'opacity-0', 'pointer-events-none');
         renderPattern7DirectCherryHint(prob);
+      } else if (prob.pattern === 5) {
+        blockHintContainer.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+        renderPattern5DirectHint(prob);
       } else {
         blockHintContainer.classList.remove('hidden', 'pointer-events-none');
         blockHintContainer.classList.add('opacity-100');
@@ -1248,8 +1248,6 @@
           blockHintContainer.innerHTML = renderPattern2HintHTML(prob.n1, prob.n2);
         } else if (prob.pattern === 3 || prob.pattern === 4) {
           blockHintContainer.innerHTML = renderPattern3And4HintHTML(prob.n1, prob.n2, prob.op);
-        } else if (prob.pattern === 5) {
-          blockHintContainer.innerHTML = renderPattern5HintHTML(prob);
         } else if (prob.pattern === 8) {
           blockHintContainer.innerHTML = renderPattern8HintHTML(prob.n1, prob.n2, prob.op);
         } else if (prob.pattern === 9) {
@@ -1262,6 +1260,44 @@
       }
 
       document.getElementById('msg-text').innerText = 'ヒントを さんこうに こたえを つくろう！';
+    }
+
+    // △5用：3つのかずのけいさん（元の式に逆さくらんぼと先の答えを直接結合）
+    function renderPattern5DirectHint(prob) {
+      const formulaLine = document.getElementById('formula-line');
+      formulaLine.innerHTML = `
+        <div class="flex items-start justify-center gap-1.5 sm:gap-3 z-10 relative py-1">
+          <!-- 先に計算する2つの数と演算子、その下に伸びる逆さくらんぼと途中の答え -->
+          <div class="flex flex-col items-center">
+            <div class="flex items-center gap-1.5 sm:gap-3">
+              <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n1}</span>
+              <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka">${prob.op1}</span>
+              <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n2}</span>
+            </div>
+            <svg width="48" height="20" viewBox="0 0 48 20" class="my-0.5">
+              <path d="M 8 2 L 24 17 M 40 2 L 24 17" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+            <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white border-2 sm:border-3 border-slate-700 flex items-center justify-center font-black text-slate-800 text-lg sm:text-2xl font-fredoka shadow-sm">
+              ${prob.subAns}
+            </div>
+          </div>
+
+          <!-- 残りの計算式成分 -->
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka mt-0.5 sm:mt-1">${prob.op2}</span>
+          <span class="text-3xl sm:text-5xl font-black text-slate-800 font-fredoka">${prob.n3}</span>
+          <span class="text-2xl sm:text-4xl font-black text-rose-500 font-fredoka mt-0.5 sm:mt-1">=</span>
+
+          <!-- 解答入力枠 -->
+          <div id="main-ans-box" class="target-active min-w-[3.5rem] sm:min-w-[4.5rem] h-12 sm:h-16 bg-pink-50 border-4 border-pink-400 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-black text-rose-600 font-fredoka shadow-inner px-2">
+            <span id="answer-text">${inputVal}</span>
+          </div>
+
+          <button type="button" onclick="activateHint()" class="ml-1 sm:ml-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 text-white font-black text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-xl shadow-[0_3px_0_#d97706] active:translate-y-0.5 cursor-pointer flex items-center gap-1 mt-0.5">
+            <i class="fa-solid fa-lightbulb text-yellow-100"></i>
+            <span>ヒント</span>
+          </button>
+        </div>
+      `;
     }
 
     // △6用：くりあがりたしざん
@@ -1402,10 +1438,10 @@
       const dist = Math.sqrt(dx * dx + dy * dy);
       const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
-      // カプセル形を少し長くし、さくらんぼ・数字との間にゆとり（すき間）を確保
-      const paddingX = 36;
+      // カプセル形とさくらんぼ・数字との間のすき間（余白）を少し狭く調整
+      const paddingX = 26;
       const capsuleWidth = dist + paddingX * 2;
-      const capsuleHeight = Math.max(r1.height, r2.height) + 24;
+      const capsuleHeight = Math.max(r1.height, r2.height) + 16;
 
       const cx = (x1 + x2) / 2;
       const cy = (y1 + y2) / 2;
@@ -1429,9 +1465,8 @@
     // たしざん: 6~9は2段、左右並び
     function renderPattern1HintHTML(n1, n2) {
       return `
-        <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+        <div class="flex items-center gap-6 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
           <div class="flex gap-1">${createDotsHTML(n1, 'orange', true)}</div>
-          <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
           <div class="flex gap-1">${createDotsHTML(n2, 'orange', true)}</div>
         </div>
       `;
@@ -1443,8 +1478,7 @@
         <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
           <div class="flex gap-1 justify-end w-full">${createDotsHTML(n1, 'orange', false)}</div>
           <div class="w-full border-b border-pink-300"></div>
-          <div class="flex items-center justify-end gap-2 w-full">
-            <span class="text-2xl font-black text-rose-500 font-fredoka mr-auto">-</span>
+          <div class="flex items-center justify-end w-full">
             <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
           </div>
         </div>
@@ -1457,12 +1491,11 @@
 
       if (op === '+') {
         return `
-          <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+          <div class="flex items-center gap-6 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
             <div class="flex items-center gap-1.5">
               ${createTenBundlesHTML(tens1, true)}
               ${ones1 > 0 ? `<div class="flex gap-1 ml-1">${createDotsHTML(ones1, 'orange', true)}</div>` : ''}
             </div>
-            <span class="text-2xl font-black text-rose-500 font-fredoka">+</span>
             <div class="flex gap-1">${n2 === 10 ? createTenBundlesHTML(1, true) : createDotsHTML(n2, 'orange', true)}</div>
           </div>
         `;
@@ -1474,8 +1507,84 @@
               ${ones1 > 0 ? `<div class="flex gap-1 ml-1">${createDotsHTML(ones1, 'orange', false)}</div>` : ''}
             </div>
             <div class="w-full border-b border-pink-300"></div>
-            <div class="flex items-center justify-end gap-2 w-full">
-              <span class="text-2xl font-black text-rose-500 font-fredoka mr-auto">-</span>
+            <div class="flex items-center justify-end w-full">
+              <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function renderPattern8HintHTML(n1, n2, op) {
+      if (n1 === 0) {
+        return `
+          <div class="flex items-center gap-4 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="w-8 h-8 rounded-lg border-2 border-pink-300 bg-white"></div>
+            <div class="flex gap-1">${createDotsHTML(n2, 'orange', true)}</div>
+          </div>
+        `;
+      } else if (n2 === 0) {
+        return `
+          <div class="flex flex-col items-center gap-1 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex gap-1">${createDotsHTML(n1, 'orange', false)}</div>
+            <div class="w-full h-7 rounded-lg border-2 border-cyan-300 bg-sky-50 mt-1"></div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-center gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex gap-1">${createDotsHTML(n1, 'orange', false)}</div>
+            <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
+          </div>
+        `;
+      }
+    }
+
+    function renderPattern9HintHTML(n1, n2, op) {
+      const t1 = Math.floor(n1 / 10);
+      const t2 = Math.floor(n2 / 10);
+      if (op === '+') {
+        return `
+          <div class="flex items-center gap-6 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex gap-1.5">${createTenBundlesHTML(t1, true)}</div>
+            <div class="flex gap-1.5">${createTenBundlesHTML(t2, true)}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
+            <div class="flex gap-1.5 justify-end w-full">${createTenBundlesHTML(t1, false)}</div>
+            <div class="w-full border-b border-pink-300"></div>
+            <div class="flex items-center justify-end w-full">
+              <div class="flex gap-1.5">${createBlueTenBundlesHTML(t2, false)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function renderPattern10And11HintHTML(n1, n2, op) {
+      const t1 = Math.floor(n1 / 10);
+      const o1 = n1 % 10;
+      if (op === '+') {
+        return `
+          <div class="flex items-center gap-6 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm">
+            <div class="flex flex-col gap-1">
+              <div class="flex gap-1.5">${createTenBundlesHTML(t1, true)}</div>
+              ${o1 > 0 ? `<div class="flex gap-1 mt-1">${createDotsHTML(o1, 'orange', true)}</div>` : ''}
+            </div>
+            <div class="flex gap-1">${createDotsHTML(n2, 'orange', true)}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex flex-col items-end gap-1.5 bg-pink-50/90 p-3 rounded-2xl border border-pink-200 shadow-sm min-w-[200px]">
+            <div class="flex items-center gap-1.5 justify-end w-full">
+              <div class="flex gap-1.5">${createTenBundlesHTML(t1, false)}</div>
+              ${o1 > 0 ? `<div class="flex gap-1 ml-1">${createDotsHTML(o1, 'orange', false)}</div>` : ''}
+            </div>
+            <div class="w-full border-b border-pink-300"></div>
+            <div class="flex items-center justify-end w-full">
               <div class="flex gap-1">${createSquareBlocksHTML(n2, 'blue', false)}</div>
             </div>
           </div>
@@ -1652,7 +1761,7 @@
     // 教科書添付画像とまったく同じ10の束SVGイラスト描画
     function createTenBundlesHTML(count, isAddition = true) {
       const singleBundle = `
-        <svg class="w-7 h-11 drop-shadow-xs overflow-visible" viewBox="0 0 34 54">
+        <svg class="w-[19px] h-11 drop-shadow-xs overflow-visible" preserveAspectRatio="none" viewBox="0 0 34 54">
           <!-- 緑のスティック10本の束 -->
           <rect x="2" y="6" width="30" height="42" rx="3" fill="#86efac" stroke="#16a34a" stroke-width="1.2"/>
           <path d="M 5 6 L 5 48 M 8 6 L 8 48 M 11 6 L 11 48 M 14 6 L 14 48 M 17 6 L 17 48 M 20 6 L 20 48 M 23 6 L 23 48 M 26 6 L 26 48 M 29 6 L 29 48" stroke="#22c55e" stroke-width="1"/>
@@ -1694,7 +1803,7 @@
 
     function createBlueTenBundlesHTML(count, isAddition = false) {
       const singleBundle = `
-        <svg class="w-7 h-11 drop-shadow-xs overflow-visible" viewBox="0 0 34 54">
+        <svg class="w-[19px] h-11 drop-shadow-xs overflow-visible" preserveAspectRatio="none" viewBox="0 0 34 54">
           <rect x="2" y="6" width="30" height="42" rx="3" fill="#93c5fd" stroke="#2563eb" stroke-width="1.2"/>
           <path d="M 5 6 L 5 48 M 8 6 L 8 48 M 11 6 L 11 48 M 14 6 L 14 48 M 17 6 L 17 48 M 20 6 L 20 48 M 23 6 L 23 48 M 26 6 L 26 48 M 29 6 L 29 48" stroke="#3b82f6" stroke-width="1"/>
           <ellipse cx="5" cy="6" rx="1.8" ry="2.2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="0.8"/>
